@@ -7,8 +7,6 @@ import numpy as np
 # ===============================================
 def load_wav(vid_path, sr, mode='train'):
     wav, sr_ret = librosa.load(vid_path, sr=sr)
-    print('works')
-    print(wav)
     assert sr_ret == sr
     if mode == 'train':
         extended_wav = np.append(wav, wav)
