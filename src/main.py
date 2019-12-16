@@ -4,6 +4,7 @@ import os
 import sys
 import keras
 import numpy as np
+from wandb.keras import WandbCallback
 
 sys.path.append('../tool')
 import toolkits
@@ -97,7 +98,7 @@ def main():
                                                  monitor='loss',
                                                  mode='min',
                                                  save_best_only=True),
-                 normal_lr, tbcallbacks]
+                 normal_lr, WandbCallback()]
 
     if args.ohem_level > 1:     # online hard negative mining will be used
         candidate_steps = int(len(partition['train']) // args.batch_size)
