@@ -17,7 +17,6 @@ class DataGenerator(keras.utils.Sequence):
         self.win_length = win_length
         self.hop_length = hop_length
 
-
         self.labels = labels
         self.shuffle = shuffle
         self.list_IDs = list_IDs
