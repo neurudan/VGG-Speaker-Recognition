@@ -4,6 +4,7 @@ import os
 import sys
 import keras
 import numpy as np
+import wandb
 from wandb.keras import WandbCallback
 
 sys.path.append('../tool')
@@ -38,6 +39,8 @@ global args
 args = parser.parse_args()
 
 def main():
+
+    wandb.init()
 
     # gpu configuration
     toolkits.initialize_GPU(args)
