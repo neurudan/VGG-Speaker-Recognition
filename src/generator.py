@@ -41,7 +41,6 @@ class DataGenerator(keras.utils.Sequence):
 
         # Generate data
         X, y = self.__data_generation_mp(list_IDs_temp, indexes)
-        print(time.time() - start)
         return X, y
 
 

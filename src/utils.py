@@ -37,6 +37,7 @@ def load_data(path, win_length=400, sr=16000, hop_length=160, n_fft=512, spec_le
     # preprocessing, subtract mean, divided by time-wise var
     mu = np.mean(spec_mag, 0, keepdims=True)
     std = np.std(spec_mag, 0, keepdims=True)
+    print('win_length=%d, sr=%d, hop_length=%d, n_fft=%d, spec_len=%d'%(win_length, sr, hop_length, n_fft, spec_len))
     return (spec_mag - mu) / (std + 1e-5)
 
 
