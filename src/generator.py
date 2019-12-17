@@ -2,6 +2,7 @@
 import keras
 import numpy as np
 import utils as ut
+import time
 
 class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
@@ -30,6 +31,7 @@ class DataGenerator(keras.utils.Sequence):
         return int(np.floor(len(self.list_IDs) / self.batch_size))
 
     def __getitem__(self, index):
+        start = time.time()
         'Generate one batch of data'
         # Generate indexes of the batch
         indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
@@ -39,7 +41,7 @@ class DataGenerator(keras.utils.Sequence):
 
         # Generate data
         X, y = self.__data_generation_mp(list_IDs_temp, indexes)
-
+        print(time.time() - start)
         return X, y
 
 
