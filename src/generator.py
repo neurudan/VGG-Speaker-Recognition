@@ -41,7 +41,7 @@ class DataGenerator(keras.utils.Sequence):
         for speaker in self.speakers:
             self.speaker_queue.put(speaker)
 
-        for _ in range(30):
+        for _ in range(200):
             thread = Process(target=self.eliminate_stupidity)
             thread.start()
 
