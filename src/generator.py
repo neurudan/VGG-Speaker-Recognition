@@ -41,14 +41,11 @@ class DataGenerator(keras.utils.Sequence):
         for speaker in self.speakers:
             self.speaker_queue.put(speaker)
 
-        self.pbar = tqdm.tqdm(total=len(self.speakers), desc='build speaker stats')
         for _ in range(30):
             thread = Process(target=self.eliminate_stupidity)
             thread.start()
 
         self.eliminate_stupidity()
-        self.pbar.close()
-
         self.enqueuers = []
         self.sample_queue = Queue(100)
         self.start_enqueuers()
@@ -57,13 +54,15 @@ class DataGenerator(keras.utils.Sequence):
         try:
             with h5py.File(self.h5_path, 'r') as data:
                 while True:
+                    size = self.speaker_queue.qsize()
                     speaker = self.speaker_queue.get(timeout=0.5)
+                    if size % 100 == 0:
+                        print('%f - %d to go'%(100.0/len(self.speakers)*size, size))
                     names = data['audio_names/'+speaker][:,0].tolist()
                     for audio, speaker_id in self.speakers[speaker]:
                         idx = names.index(audio)
                         length = data['statistics/'+speaker][idx, 0]
                         self.sample_allocation[speaker+'/'+audio] = (speaker, idx, speaker_id, length)
-                    self.pbar.update(1)
         except:
             pass
 
