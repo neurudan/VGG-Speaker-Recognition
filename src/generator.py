@@ -44,7 +44,7 @@ class DataGenerator(keras.utils.Sequence):
 
         self.sample_queue = Queue(2000000)
         threads = []
-        for _ in range(200):
+        for _ in range(20):
             thread = Process(target=self.eliminate_stupidity)
             thread.start()
 
