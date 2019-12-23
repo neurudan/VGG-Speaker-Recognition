@@ -70,13 +70,15 @@ class DataGenerator(keras.utils.Sequence):
                     start = np.random.randint(length*2 - self.spec_len)
                     if start >= length:
                         sample = data['data/' + speaker][idx][257*(start):257*(start+self.spec_len)]
+                        print('bigger: '+str(sample.shape))
                     elif start + self.spec_len < length:
                         sample = data['data/' + speaker][idx][257*(start):(start+self.spec_len)]
+                        print('smaller: '+str(sample.shape))
                     else:
                         sample1 = data['data/' + speaker][idx][257*(start):]
                         sample2 = data['data/' + speaker][idx][:257*(self.spec_len-length+start)]
                         sample = np.append(sample1, sample2)
-                    print(sample.shape)
+                        print('add: '+str(sample.shape))
                     sample = sample.reshape((257, self.spec_len))
                     
                     if np.random.random() < 0.3:
