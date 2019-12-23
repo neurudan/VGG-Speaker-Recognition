@@ -37,16 +37,18 @@ class DataGenerator(keras.utils.Sequence):
             self.speakers[speaker].append((file_name, labels[i]))
 
         self.sample_allocation = {}
-        self.speaker_queue = Queue(len(speakers.keys()))
+        self.speaker_queue = Queue(len(self.speakers))
         for speaker in self.speakers:
             self.speaker_queue.put(speaker)
 
+        self.pbar = tqdm.tqdm(total=len(self.speakers), desc='build speaker stats')
         for _ in range(30):
             thread = Process(target=self.eliminate_stupidity)
             thread.start()
 
         self.eliminate_stupidity()
-        
+        self.pbar.close()
+
         self.enqueuers = []
         self.sample_queue = Queue(100)
         self.start_enqueuers()
@@ -61,6 +63,7 @@ class DataGenerator(keras.utils.Sequence):
                         idx = names.index(audio)
                         length = data['statistics/'+speaker][idx, 0]
                         self.sample_allocation[speaker+'/'+audio] = (speaker, idx, speaker_id, length)
+                        self.pbar.update(1)
         except:
             pass
 
