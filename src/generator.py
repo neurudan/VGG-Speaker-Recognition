@@ -67,8 +67,8 @@ class DataGenerator(keras.utils.Sequence):
                         idx = names.index(audio)
                         length = data['statistics/'+speaker][idx, 0]
                         self.sample_queue.put((speaker+'/'+audio, speaker, idx, speaker_id, length))
-        except:
-            pass
+        except Exception as e:
+            print(e)
 
     def __len__(self):
         'Denotes the number of batches per epoch'
