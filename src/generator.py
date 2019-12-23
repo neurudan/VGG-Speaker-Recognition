@@ -38,7 +38,7 @@ class DataGenerator(keras.utils.Sequence):
 
         self.sample_allocation = {}
         with h5py.File(self.h5_path, 'r') as data:
-            for speaker in tqdm(speakers, ncols=100, ascii=True, desc='build speaker statistics'):
+            for speaker in tqdm.tqdm(speakers, ncols=100, ascii=True, desc='build speaker statistics'):
                 names = []
                 for i in range(len(data['audio_names/'+speaker])):
                     names.append(data['audio_names/'+speaker][i,0])
