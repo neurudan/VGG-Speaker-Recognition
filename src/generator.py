@@ -63,7 +63,7 @@ class DataGenerator(keras.utils.Sequence):
                         idx = names.index(audio)
                         length = data['statistics/'+speaker][idx, 0]
                         self.sample_allocation[speaker+'/'+audio] = (speaker, idx, speaker_id, length)
-                        self.pbar.update(1)
+                    self.pbar.update(1)
         except:
             pass
 
