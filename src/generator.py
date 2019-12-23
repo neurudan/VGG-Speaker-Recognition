@@ -42,6 +42,7 @@ class DataGenerator(keras.utils.Sequence):
                 names = data['audio_names/'+speaker][:].tolist()
                 for audio, speaker_id in speakers[speaker]:
                     print(audio)
+                    print(len(names))
                     print(audio in names)
                     idx = names.index(audio)
                     length = data['statistics/'+speaker][idx]
