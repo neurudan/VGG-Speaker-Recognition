@@ -51,6 +51,7 @@ def main():
     # ==================================
     #       Get Train/Val.
     # ==================================
+    fulllist, fulllb = toolkits.get_voxceleb2_datalist(args, path='../meta/voxlb2_full.txt')
     trnlist, trnlb = toolkits.get_voxceleb2_datalist(args, path='../meta/voxlb2_train.txt')
     vallist, vallb = toolkits.get_voxceleb2_datalist(args, path='../meta/voxlb2_val.txt')
 
@@ -69,11 +70,11 @@ def main():
               }
 
     # Datasets
-    partition = {'train': trnlist.flatten(), 'val': vallist.flatten()}
-    labels = {'train': trnlb.flatten(), 'val': vallb.flatten()}
+    partition = {'full': fulllist.flatten(), 'train': trnlist.flatten(), 'val': vallist.flatten()}
+    labels = {'full': fulllb.flatten(), 'train': trnlb.flatten(), 'val': vallb.flatten()}
 
     # Generators
-    trn_gen = generator.DataGenerator(partition['train'], labels['train'], **params)
+    trn_gen = generator.DataGenerator(partition['full'], labels['full'], **params)
     network = model.vggvox_resnet2d_icassp(input_dim=params['dim'],
                                            num_class=params['n_classes'],
                                            mode='train', args=args)
@@ -90,7 +91,7 @@ def main():
 
     print(network.summary())
     print('==> gpu {} is, training {} images, classes: 0-{} '
-          'loss: {}, aggregation: {}, ohemlevel: {}'.format(args.gpu, len(partition['train']), np.max(labels['train']),
+          'loss: {}, aggregation: {}, ohemlevel: {}'.format(args.gpu, len(partition['full']), np.max(labels['full']),
                                                             args.loss, args.aggregation_mode, args.ohem_level))
 
     model_path, log_path = set_path(args)
@@ -101,41 +102,14 @@ def main():
                                                  save_best_only=True),
                  normal_lr, WandbCallback()]
 
-    if args.ohem_level > 1:     # online hard negative mining will be used
-        candidate_steps = int(len(partition['train']) // args.batch_size)
-        iters_per_epoch = int(len(partition['train']) // (args.ohem_level*args.batch_size))
-
-        ohem_generator = generator.OHEM_generator(network,
-                                                  trn_gen,
-                                                  candidate_steps,
-                                                  args.ohem_level,
-                                                  args.batch_size,
-                                                  params['dim'],
-                                                  params['n_classes']
-                                                  )
-
-        A = ohem_generator.next()   # for some reason, I need to warm up the generator
-
-        network.fit_generator(generator.OHEM_generator(network, trn_gen, iters_per_epoch,
-                                                       args.ohem_level, args.batch_size,
-                                                       params['dim'], params['n_classes']),
-                              steps_per_epoch=iters_per_epoch,
-                              epochs=args.epochs,
-                              max_queue_size=10,
-                              callbacks=callbacks,
-                              use_multiprocessing=False,
-                              workers=1,
-                              verbose=1)
-
-    else:
-        network.fit_generator(trn_gen,
-                              steps_per_epoch=int(len(partition['train'])//args.batch_size),
-                              epochs=args.epochs,
-                              max_queue_size=10,
-                              callbacks=callbacks,
-                              use_multiprocessing=False,
-                              workers=1,
-                              verbose=1)
+    network.fit_generator(trn_gen,
+                          steps_per_epoch=int(len(partition['full'])//args.batch_size),
+                          epochs=args.epochs,
+                          max_queue_size=10,
+                          callbacks=callbacks,
+                          use_multiprocessing=False,
+                          workers=1,
+                          verbose=1)
 
 
 def step_decay(epoch):
