@@ -39,11 +39,13 @@ class DataGenerator(keras.utils.Sequence):
         with h5py.File(self.h5_path, 'r') as data:
             for speaker in speakers:
                 print(speaker)
-                names = data['audio_names/'+speaker][:].tolist()
+                names = data['audio_names/'+speaker][:]
+                stats = data['statistics/'+speaker][:]
+                for n in names[:10]:
+                    print(n)
+                for n in stats[:10]:
+                    print(n)    
                 for audio, speaker_id in speakers[speaker]:
-                    print(audio)
-                    print(names)
-                    print(audio)
                     time.sleep(4)
                     idx = names.index(audio)
                     length = data['statistics/'+speaker][idx]
