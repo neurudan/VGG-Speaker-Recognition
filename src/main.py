@@ -10,6 +10,14 @@ from wandb.keras import WandbCallback
 sys.path.append('../tool')
 import toolkits
 
+
+import atexit
+
+
+@atexit.register
+def terminate_subprocesses():
+    os.system('kill -9 $(pgrep -f "python main.py")')
+
 # ===========================================
 #        Parse the argument
 # ===========================================

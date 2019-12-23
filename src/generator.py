@@ -25,6 +25,7 @@ class DataGenerator(keras.utils.Sequence):
 
         self.on_epoch_end()
 
+        self.terminate_enqueuer = False
         # put dataset path here
         self.h5_path = '/cluster/home/neurudan/datasets/vox2/vox2_vgg.h5'
 
