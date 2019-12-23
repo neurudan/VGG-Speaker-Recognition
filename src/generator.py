@@ -40,7 +40,7 @@ class DataGenerator(keras.utils.Sequence):
 
         self.list_IDs = []
         with h5py.File(self.h5_path, 'r') as data:
-            for speaker in tqdm(self.speakers, ncols=100, ascii=True, desc='build speaker statistics'):
+            for speaker in tqdm.tqdm(self.speakers, ncols=100, ascii=True, desc='build speaker statistics'):
                 times = data['statistics/'+speaker][:, 0]
                 speakers = [speaker] * len(times)
                 ids = np.arange(len(times))
