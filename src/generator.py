@@ -42,11 +42,23 @@ class DataGenerator(keras.utils.Sequence):
         for speaker in self.speakers:
             self.speaker_queue.put(speaker)
 
+        threads = []
         for _ in range(200):
             thread = Process(target=self.eliminate_stupidity)
             thread.start()
+            threads.append(thread)
 
         self.eliminate_stupidity()
+        one_running = True
+        while one_running:
+            one_running = False
+            for thread in threads:
+                if thread.is_alive():
+                    one_running = True
+            print('finish remaining...')
+            time.sleep(1)
+        print('finished.')
+        
         self.enqueuers = []
         self.sample_queue = Queue(100)
         self.start_enqueuers()
