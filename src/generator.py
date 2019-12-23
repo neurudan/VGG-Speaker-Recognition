@@ -5,6 +5,7 @@ import utils as ut
 import time
 import h5py
 import tqdm
+import random
 
 from multiprocessing import Process, Queue
 
@@ -16,59 +17,41 @@ class DataGenerator(keras.utils.Sequence):
         self.spec_len = spec_len
         self.normalize = normalize
 
-        self.labels = labels
         self.shuffle = shuffle
-        self.list_IDs = list_IDs
-        self.n_classes = n_classes
         self.batch_size = batch_size
-        self.augmentation = augmentation
-
-        self.on_epoch_end()
 
         self.terminate_enqueuer = False
-        # put dataset path here
         self.h5_path = '/cluster/home/neurudan/datasets/vox2/vox2_vgg.h5'
 
-        self.speakers = {}
-        for i, ID in enumerate(list_IDs):
-            speaker = ID.split('/')[0]
-            file_name = ID.split('/')[1] + '/' + ID.split('/')[2]
-            if speaker not in self.speakers:
-                self.speakers[speaker] = []
-            self.speakers[speaker].append((file_name, labels[i]))
+        # Read Speaker List
+        lines = []
+        with open('../meta/vox2_speakers_5994_dev.txt') as f:
+            lines = f.readlines()
+        lines = list(set(lines))
+        if '\n' in lines:
+            lines.remove('\n')
+        self.speakers = []
+        for line in lines:
+            if line[-1] == '\n':
+                line = line[:-1]
+            self.speakers.append(line)
 
-        self.sample_allocation = {}
-        self.speaker_queue = Queue(len(self.speakers))
-        for speaker in self.speakers:
-            self.speaker_queue.put(speaker)
+        self.n_classes = len(self.speakers)
 
-        self.sample_queue = Queue(2000000)
-        threads = []
-        for _ in range(20):
-            thread = Process(target=self.eliminate_stupidity)
-            thread.start()
+        self.list_IDs = []
+        with h5py.File(self.h5_path, 'r') as data:
+            for speaker in tqdm(self.speakers, ncols=100, ascii=True, desc='build speaker statistics'):
+                times = data['statistics/'+speaker][:, 0]
+                speakers = [speaker] * len(times)
+                ids = np.arange(len(times))
+                self.list_IDs.extend(list(zip(speakers, ids, times)))
 
-        self.sample_allocation = {}
-        for _ in tqdm.tqdm(self.list_IDs, ncols=100, ascii=True, desc='build speaker statistics'):
-            key, speaker, idx, speaker_id, length = self.sample_queue.get()
-            self.sample_allocation[key] = (speaker, idx, speaker_id, length)
+        self.index_queue = Queue(self.__len__())
+        self.on_epoch_end()
 
         self.enqueuers = []
         self.sample_queue = Queue(100)
         self.start_enqueuers()
-
-    def eliminate_stupidity(self):
-        try:
-            with h5py.File(self.h5_path, 'r') as data:
-                while True:
-                    speaker = self.speaker_queue.get(timeout=0.5)
-                    names = data['audio_names/'+speaker][:,0].tolist()
-                    for audio, speaker_id in self.speakers[speaker]:
-                        idx = names.index(audio)
-                        length = data['statistics/'+speaker][idx, 0]
-                        self.sample_queue.put((speaker+'/'+audio, speaker, idx, speaker_id, length))
-        except Exception as e:
-            print(e)
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -79,10 +62,9 @@ class DataGenerator(keras.utils.Sequence):
             while not self.terminate_enqueuer:
                 samples = []
                 labels = []
-                for _ in range(self.batch_size):
-                    ID = self.index_queue.get()
-                    speaker, idx, speaker_id, length = self.sample_allocation[ID]
-                    labels.append(speaker_id)
+                keys = self.index_queue.get()
+                for speaker, idx, length in keys:
+                    labels.append(self.speakers.index(speaker))
                     
                     sample = None
                     start = np.random.randint(length*2 - self.spec_len)
@@ -106,21 +88,15 @@ class DataGenerator(keras.utils.Sequence):
                 labels = np.eye(self.n_classes)[labels]
                 self.sample_queue.put((np.array(samples), labels))
 
-
     def __getitem__(self, index):
         X, y = self.sample_queue.get()
         return X, y
 
-
     def on_epoch_end(self):
         'Updates indexes after each epoch'
-        max_items = self.__len__()*self.batch_size
-        self.index_queue = Queue(max_items)
-        IDs = self.list_IDs.copy()
-        if self.shuffle:
-            np.random.shuffle(IDs)
-        for i in range(max_items):
-            self.index_queue.put(IDs[i])
+        random.shuffle(self.list_IDs)
+        for i in range(self.__len__()):
+            self.index_queue.put(self.list_IDs[i*self.batch_size:(i*self.batch_size)+self.batch_size])
 
     def start_enqueuers(self):
         for _ in range(16):

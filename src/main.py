@@ -56,13 +56,6 @@ def main():
     import model
     import generator
 
-    # ==================================
-    #       Get Train/Val.
-    # ==================================
-    fulllist, fulllb = toolkits.get_voxceleb2_datalist(args, path='../meta/voxlb2_full.txt')
-    trnlist, trnlb = toolkits.get_voxceleb2_datalist(args, path='../meta/voxlb2_train.txt')
-    vallist, vallb = toolkits.get_voxceleb2_datalist(args, path='../meta/voxlb2_val.txt')
-
     # construct the data generator.
     params = {'dim': (257, 250, 1),
               'mp_pooler': toolkits.set_mp(processes=args.multiprocess),
@@ -77,14 +70,10 @@ def main():
               'normalize': True,
               }
 
-    # Datasets
-    partition = {'full': fulllist.flatten(), 'train': trnlist.flatten(), 'val': vallist.flatten()}
-    labels = {'full': fulllb.flatten(), 'train': trnlb.flatten(), 'val': vallb.flatten()}
-
     # Generators
-    trn_gen = generator.DataGenerator(partition['full'], labels['full'], **params)
+    trn_gen = generator.DataGenerator(**params)
     network = model.vggvox_resnet2d_icassp(input_dim=params['dim'],
-                                           num_class=params['n_classes'],
+                                           num_class=trn_gen.n_classes,
                                            mode='train', args=args)
 
     # ==> load pre-trained model ???list_IDs_temp
