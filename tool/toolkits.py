@@ -97,7 +97,7 @@ def get_imagenet_imglist(args, trn_meta_path='', val_meta_path=''):
 def get_voxceleb2_datalist(args, path):
     with open(path) as f:
         strings = f.readlines()
-        audiolist = np.array([os.path.join(args.data_path, string.split()[0]) for string in strings])
+        audiolist = np.array([string.split()[0] for string in strings])
         labellist = np.array([int(string.split()[1]) for string in strings])
         f.close()
     return audiolist, labellist
