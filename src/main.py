@@ -48,7 +48,7 @@ args = parser.parse_args()
 
 def main():
 
-    wandb.init()
+    #wandb.init()
 
     # gpu configuration
     toolkits.initialize_GPU(args)
