@@ -49,7 +49,7 @@ class DataGenerator(keras.utils.Sequence):
             thread.start()
 
         self.sample_allocation = {}
-        for _ in tqdm.tqdm(enumerate(self.list_IDs), ncols=100, ascii=True, desc='build speaker statistics'):
+        for _ in tqdm.tqdm(self.list_IDs, ncols=100, ascii=True, desc='build speaker statistics'):
             key, speaker, idx, speaker_id, length = self.sample_queue.get()
             self.sample_allocation[key] = (speaker, idx, speaker_id, length)
 
