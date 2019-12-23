@@ -39,11 +39,14 @@ class DataGenerator(keras.utils.Sequence):
         self.sample_allocation = {}
         with h5py.File(self.h5_path, 'r') as data:
             for speaker in tqdm.tqdm(speakers, ncols=100, ascii=True, desc='build speaker statistics'):
+                start = time.time()
                 names = data['audio_names/'+speaker][:,0].tolist()
+                t1 = time.time()
                 for audio, speaker_id in speakers[speaker]:
                     idx = names.index(audio)
                     length = data['statistics/'+speaker][idx, 0]
                     self.sample_allocation[speaker+'/'+audio] = (speaker, idx, speaker_id, length)
+                print("names: %f, rest: %f"%(t1-start, time.time()-t1))
         
         self.enqueuers = []
         self.sample_queue = Queue(100)
