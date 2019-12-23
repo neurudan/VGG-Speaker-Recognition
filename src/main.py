@@ -100,7 +100,7 @@ def main():
                  normal_lr]#, WandbCallback()]
 
     network.fit_generator(trn_gen,
-                          steps_per_epoch=int(len(partition['full'])//args.batch_size),
+                          steps_per_epoch=trn_gen.len(),
                           epochs=args.epochs,
                           max_queue_size=10,
                           callbacks=callbacks,

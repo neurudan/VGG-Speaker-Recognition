@@ -58,6 +58,9 @@ class DataGenerator(keras.utils.Sequence):
         self.sample_queue = Queue(100)
         self.start_enqueuers()
 
+    def len(self):
+        return self.__len__()
+
     def __len__(self):
         'Denotes the number of batches per epoch'
         return int(np.floor(len(self.list_IDs) / self.batch_size))
