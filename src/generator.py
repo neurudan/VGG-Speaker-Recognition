@@ -61,10 +61,7 @@ class DataGenerator(keras.utils.Sequence):
         try:
             with h5py.File(self.h5_path, 'r') as data:
                 while True:
-                    size = self.speaker_queue.qsize()
                     speaker = self.speaker_queue.get(timeout=0.5)
-                    if size % 100 == 0:
-                        print('%f - %d to go'%(100.0/len(self.speakers)*(len(self.speakers) - size), size))
                     names = data['audio_names/'+speaker][:,0].tolist()
                     for audio, speaker_id in self.speakers[speaker]:
                         idx = names.index(audio)
