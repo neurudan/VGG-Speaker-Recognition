@@ -39,7 +39,7 @@ class DataGenerator(keras.utils.Sequence):
         with h5py.File(self.h5_path, 'r') as data:
             for speaker in speakers:
                 print(speaker)
-                names = data['audio_names/'+speaker].aslist()
+                names = data['audio_names/'+speaker][:].aslist()
                 for audio, speaker_id in speakers[speaker]:
                     print(audio)
                     print(audio in names)
