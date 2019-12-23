@@ -87,8 +87,8 @@ def main():
             print("==> no checkpoint found at '{}'".format(args.resume))
 
     print(network.summary())
-    print('==> gpu {} is, training {} images, classes: 0-{} '
-          'loss: {}, aggregation: {}, ohemlevel: {}'.format(args.gpu, len(partition['full']), np.max(labels['full']),
+    print('==> gpu {} is, training using'
+          'loss: {}, aggregation: {}, ohemlevel: {}'.format(args.gpu,
                                                             args.loss, args.aggregation_mode, args.ohem_level))
 
     model_path, log_path = set_path(args)
