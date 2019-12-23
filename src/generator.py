@@ -39,10 +39,10 @@ class DataGenerator(keras.utils.Sequence):
         with h5py.File(self.h5_path, 'r') as data:
             for speaker in speakers:
                 print(speaker)
-                names = list(data['audio_names/'+speaker])
+                names = data['audio_names/'+speaker].aslist()
                 for audio, speaker_id in speakers[speaker]:
                     print(audio)
-                    print(names)
+                    print(audio in names)
                     idx = names.index(audio)
                     length = data['statistics/'+speaker][idx]
                     self.sample_allocation[speaker+'/'+audio] = (speaker, idx, speaker_id, length)
