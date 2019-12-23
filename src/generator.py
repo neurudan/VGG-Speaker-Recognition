@@ -28,29 +28,41 @@ class DataGenerator(keras.utils.Sequence):
         # put dataset path here
         self.h5_path = '/cluster/home/neurudan/datasets/vox2/vox2_vgg.h5'
 
-        speakers = {}
+        self.speakers = {}
         for i, ID in enumerate(list_IDs):
             speaker = ID.split('/')[0]
             file_name = ID.split('/')[1] + '/' + ID.split('/')[2]
-            if speaker not in speakers:
-                speakers[speaker] = []
-            speakers[speaker].append((file_name, labels[i]))
+            if speaker not in self.speakers:
+                self.speakers[speaker] = []
+            self.speakers[speaker].append((file_name, labels[i]))
 
         self.sample_allocation = {}
-        with h5py.File(self.h5_path, 'r') as data:
-            for speaker in tqdm.tqdm(speakers, ncols=100, ascii=True, desc='build speaker statistics'):
-                start = time.time()
-                names = data['audio_names/'+speaker][:,0].tolist()
-                t1 = time.time()
-                for audio, speaker_id in speakers[speaker]:
-                    idx = names.index(audio)
-                    length = data['statistics/'+speaker][idx, 0]
-                    self.sample_allocation[speaker+'/'+audio] = (speaker, idx, speaker_id, length)
-                print("names: %f, rest: %f"%(t1-start, time.time()-t1))
+        self.speaker_queue = Queue(len(speakers.keys()))
+        for speaker in self.speakers:
+            self.speaker_queue.put(speaker)
+
+        for _ in range(30):
+            thread = Process(target=self.eliminate_stupidity)
+            thread.start()
+
+        self.eliminate_stupidity()
         
         self.enqueuers = []
         self.sample_queue = Queue(100)
         self.start_enqueuers()
+
+    def eliminate_stupidity(self):
+        try:
+            with h5py.File(self.h5_path, 'r') as data:
+                while True:
+                    speaker = self.speaker_queue.get(timeout=0.5)
+                    names = data['audio_names/'+speaker][:,0].tolist()
+                    for audio, speaker_id in self.speakers[speaker]:
+                        idx = names.index(audio)
+                        length = data['statistics/'+speaker][idx, 0]
+                        self.sample_allocation[speaker+'/'+audio] = (speaker, idx, speaker_id, length)
+        except:
+            pass
 
     def __len__(self):
         'Denotes the number of batches per epoch'
