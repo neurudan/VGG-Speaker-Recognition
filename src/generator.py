@@ -25,7 +25,7 @@ class DataGenerator(keras.utils.Sequence):
         self.on_epoch_end()
 
         # put dataset path here
-        self.h5_path = ''
+        self.h5_path = '/cluster/home/neurudan/datasets/vox2/vox2_vgg.h5'
 
         speakers = {}
         for i, ID in enumerate(list_IDs):
