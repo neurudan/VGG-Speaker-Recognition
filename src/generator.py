@@ -41,7 +41,7 @@ class DataGenerator(keras.utils.Sequence):
         self.list_IDs = []
         with h5py.File(self.h5_path, 'r') as data:
             for speaker in tqdm.tqdm(self.speakers, ncols=100, ascii=True, desc='build speaker statistics'):
-                times = data['statistics/'+speaker][:, 0]
+                times = data['statistics/'+speaker][:]
                 speakers = [speaker] * len(times)
                 ids = np.arange(len(times))
                 self.list_IDs.extend(list(zip(speakers, ids, times)))
@@ -70,12 +70,12 @@ class DataGenerator(keras.utils.Sequence):
                     start = np.random.randint(length*2 - self.spec_len)
                     print(data['data/' + speaker][idx])
                     if start >= length:
-                        sample = data['data/' + speaker][idx,:, 257*(start):257*(start+self.spec_len)]
+                        sample = data['data/' + speaker][idx, 257*(start):257*(start+self.spec_len)]
                     elif start + self.spec_len < length:
-                        sample = data['data/' + speaker][idx,:, 257*(start):(start+self.spec_len)]
+                        sample = data['data/' + speaker][idx, 257*(start):(start+self.spec_len)]
                     else:
-                        sample1 = data['data/' + speaker][idx,:, 257*(start):]
-                        sample2 = data['data/' + speaker][idx,:, :257*(start-length+self.spec_len)]
+                        sample1 = data['data/' + speaker][idx, 257*(start):]
+                        sample2 = data['data/' + speaker][idx, :257*(start-length+self.spec_len)]
                         sample = np.append(sample1, sample2)
 
                     sample = sample.reshape((257, self.spec_len))
