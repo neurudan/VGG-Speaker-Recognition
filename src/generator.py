@@ -41,9 +41,14 @@ class DataGenerator(keras.utils.Sequence):
         self.list_IDs = []
         with h5py.File(self.h5_path, 'r') as data:
             for speaker in tqdm.tqdm(self.speakers, ncols=100, ascii=True, desc='build speaker statistics'):
-                times = data['statistics/'+speaker][:]
-                speakers = [speaker] * len(times)
-                ids = np.arange(len(times))
+                times = []
+                speakers = []
+                ids = []
+                for i, time in enumerate(data['statistics/'+speaker][:]):
+                    if time * 2 > self.spec_len:
+                        times.append(time)
+                        ids.append(i)
+                        speakers.append(speaker)
                 self.list_IDs.extend(list(zip(speakers, ids, times)))
 
         self.index_queue = Queue(self.__len__())
@@ -68,6 +73,7 @@ class DataGenerator(keras.utils.Sequence):
                     
                     sample = None
                     start = np.random.randint(length*2 - self.spec_len)
+                    if
                     if start >= length:
                         start -= length
                         sample = data['data/' + speaker][idx][257*(start):257*(start+self.spec_len)]
