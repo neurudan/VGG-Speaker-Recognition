@@ -95,7 +95,9 @@ class DataGenerator(keras.utils.Sequence):
 
                     samples.append((sample - mu) / (std + 1e-5))
                 labels = np.eye(self.n_classes)[labels]
-                self.sample_queue.put((np.array(samples), labels))
+                samples = np.array(samples)
+                samples = samples.reshape(samples.shape+(1,))
+                self.sample_queue.put((samples, labels))
 
     def __getitem__(self, index):
         X, y = self.sample_queue.get()
