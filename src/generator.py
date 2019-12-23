@@ -21,11 +21,11 @@ class DataGenerator(keras.utils.Sequence):
         self.batch_size = batch_size
 
         self.terminate_enqueuer = False
-        self.h5_path = '/cluster/home/neurudan/datasets/vox2/vox2_vgg.h5'
+        self.h5_path = '/cluster/home/neurudan/datasets/TIMIT/timit_vgg.h5'
 
         # Read Speaker List
         lines = []
-        with open('../meta/vox2_speakers_5994_dev.txt') as f:
+        with open('../meta/timit_speakers_630_all.txt') as f:
             lines = f.readlines()
         lines = list(set(lines))
         if '\n' in lines:
@@ -70,14 +70,15 @@ class DataGenerator(keras.utils.Sequence):
                     start = np.random.randint(length*2 - self.spec_len)
                     print(data['data/' + speaker][idx])
                     if start >= length:
-                        start = start - length
-                        sample = data['data/' + speaker][idx,:, start:start+self.spec_len]
+                        sample = data['data/' + speaker][idx,:, 257*(start):257*(start+self.spec_len)]
                     elif start + self.spec_len < length:
-                        sample = data['data/' + speaker][idx,:, start:start+self.spec_len]
+                        sample = data['data/' + speaker][idx,:, 257*(start):(start+self.spec_len)]
                     else:
-                        sample1 = data['data/' + speaker][idx,:, start:]
-                        sample2 = data['data/' + speaker][idx,:, :start-length+self.spec_len]
-                        sample = np.append(sample1, sample2, axis=1)
+                        sample1 = data['data/' + speaker][idx,:, 257*(start):]
+                        sample2 = data['data/' + speaker][idx,:, :257*(start-length+self.spec_len)]
+                        sample = np.append(sample1, sample2)
+
+                    sample = sample.reshape((257, self.spec_len))
                     
                     if np.random.random() < 0.3:
                         sample = sample[:,::-1]                    
