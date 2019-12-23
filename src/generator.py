@@ -11,7 +11,7 @@ from multiprocessing import Process, Queue
 
 class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
-    def __init__(self, list_IDs, labels, dim, mp_pooler, augmentation=True, batch_size=32, nfft=512, spec_len=250,
+    def __init__(self, dim, mp_pooler, augmentation=True, batch_size=32, nfft=512, spec_len=250,
                  win_length=400, sampling_rate=16000, hop_length=160, n_classes=5994, shuffle=True, normalize=True):
         'Initialization'
         self.spec_len = spec_len
