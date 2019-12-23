@@ -73,7 +73,6 @@ class DataGenerator(keras.utils.Sequence):
                     
                     sample = None
                     start = np.random.randint(length*2 - self.spec_len)
-                    if
                     if start >= length:
                         start -= length
                         sample = data['data/' + speaker][idx][257*(start):257*(start+self.spec_len)]
