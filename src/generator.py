@@ -4,6 +4,7 @@ import numpy as np
 import utils as ut
 import time
 import h5py
+import tqdm
 
 from multiprocessing import Process, Queue
 
@@ -37,14 +38,12 @@ class DataGenerator(keras.utils.Sequence):
 
         self.sample_allocation = {}
         with h5py.File(self.h5_path, 'r') as data:
-            for speaker in speakers:
-                names = data['audio_names/'+speaker][:]
-                real_names = []
-                real_stats = []
-                for n in names:
-                    real_names.append(n[0])
+            for speaker in tqdm(speakers, ncols=100, ascii=True, desc='build speaker statistics'):
+                names = []
+                for i in range(len(data['audio_names/'+speaker])):
+                    names.append(data['audio_names/'+speaker][i,0])
                 for audio, speaker_id in speakers[speaker]:
-                    idx = real_names.index(audio)
+                    idx = names.index(audio)
                     length = data['statistics/'+speaker][idx, 0]
                     self.sample_allocation[speaker+'/'+audio] = (speaker, idx, speaker_id, length)
         
