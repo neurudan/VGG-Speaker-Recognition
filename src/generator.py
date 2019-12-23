@@ -74,7 +74,7 @@ class DataGenerator(keras.utils.Sequence):
                         sample = data['data/' + speaker][idx][257*(start):(start+self.spec_len)]
                     else:
                         sample1 = data['data/' + speaker][idx][257*(start):]
-                        sample2 = data['data/' + speaker][idx][:257*(start-length+self.spec_len)]
+                        sample2 = data['data/' + speaker][idx][:257*(self.spec_len-start)]
                         sample = np.append(sample1, sample2)
                     print(sample.shape)
                     sample = sample.reshape((257, self.spec_len))
