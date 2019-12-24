@@ -114,7 +114,7 @@ class DataGenerator(keras.utils.Sequence):
 
         self.enqueuers = []
         self.sample_queue = Queue(100)
-        for _ in range(16):
+        for _ in range(32):
             enqueuer = Process(target=self.enqueue)
             enqueuer.start()
             self.enqueuers.append(enqueuer)
