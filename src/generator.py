@@ -50,12 +50,6 @@ class DataGenerator(keras.utils.Sequence):
                         ids.append(i)
                         speakers.append(speaker)
                 self.list_IDs.extend(list(zip(speakers, ids, times)))
-
-        self.index_queue = Queue(self.__len__())
-        self.on_epoch_end()
-
-        self.enqueuers = []
-        self.sample_queue = Queue(100)
         self.start_enqueuers()
 
     def len(self):
@@ -88,7 +82,7 @@ class DataGenerator(keras.utils.Sequence):
                     sample = sample.reshape((257, self.spec_len))
                     
                     if np.random.random() < 0.3:
-                        sample = sample[:,::-1]                    
+                        sample = sample[:,::-1]
 
                     mu = np.mean(sample, 0, keepdims=True)
                     std = np.std(sample, 0, keepdims=True)
@@ -99,17 +93,27 @@ class DataGenerator(keras.utils.Sequence):
                 samples = samples.reshape(samples.shape+(1,))
                 self.sample_queue.put((samples, labels))
 
+    def index_enqueuer(self):
+        while not self.terminate_enqueuer:
+            random.shuffle(self.list_IDs)
+            for i in range(self.__len__()):
+                self.index_queue.put(self.list_IDs[i*self.batch_size:(i*self.batch_size)+self.batch_size])
+
+
     def __getitem__(self, index):
         X, y = self.sample_queue.get()
         return X, y
 
     def on_epoch_end(self):
-        'Updates indexes after each epoch'
-        random.shuffle(self.list_IDs)
-        for i in range(self.__len__()):
-            self.index_queue.put(self.list_IDs[i*self.batch_size:(i*self.batch_size)+self.batch_size])
+        pass
 
     def start_enqueuers(self):
+        self.index_queue = Queue(self.__len__())
+        self.indexer = Process(target=self.index_enqueuer)
+        self.indexer.start()
+
+        self.enqueuers = []
+        self.sample_queue = Queue(100)
         for _ in range(16):
             enqueuer = Process(target=self.enqueue)
             enqueuer.start()
