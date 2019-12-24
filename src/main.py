@@ -48,7 +48,7 @@ args = parser.parse_args()
 
 def main():
 
-    #wandb.init()
+    wandb.init()
 
     # gpu configuration
     toolkits.initialize_GPU(args)
@@ -97,7 +97,7 @@ def main():
                                                  monitor='loss',
                                                  mode='min',
                                                  save_best_only=True),
-                 normal_lr]#, WandbCallback()]
+                 normal_lr, WandbCallback()]
 
     network.fit_generator(trn_gen,
                           steps_per_epoch=trn_gen.len(),
