@@ -3,10 +3,11 @@ from __future__ import print_function
 import os
 import sys
 import numpy as np
-
+from test_generator import DataGenerator
 sys.path.append('../tool')
 import toolkits
 import utils as ut
+import tqdm
 
 import pdb
 # ===========================================
@@ -95,26 +96,17 @@ def main():
     # The feature extraction process has to be done sample-by-sample,
     # because each sample is of different lengths.
     total_length = len(unique_list)
-    feats, scores, labels = [], [], []
-    for c, ID in enumerate(unique_list):
-        if c % 50 == 0: print('Finish extracting features for {}/{}th wav.'.format(c, total_length))
-        specs = ut.load_data(ID, win_length=params['win_length'], sr=params['sampling_rate'],
-                             hop_length=params['hop_length'], n_fft=params['nfft'],
-                             spec_len=params['spec_len'], mode='eval')
-        specs = np.expand_dims(np.expand_dims(specs, 0), -1)
-    
-        v = network_eval.predict(specs)
-        feats += [v]
-    
-    feats = np.array(feats)
+    feats, scores, labels = {}, [], []
+    dgen = DataGenerator(unique_list, True)
+    for ID in tqdm.tqdm(unique_list, ncols=100, ascii=True, desc='generate embeddings'):
+        audio, sample = dgen.sample_queue.get()
+        v = network_eval.predict(sample)
+        feats[audio] = v
 
     # ==> compute the pair-wise similarity.
     for c, (p1, p2) in enumerate(zip(list1, list2)):
-        ind1 = np.where(unique_list == p1)[0][0]
-        ind2 = np.where(unique_list == p2)[0][0]
-
-        v1 = feats[ind1, 0]
-        v2 = feats[ind2, 0]
+        v1 = feats[p1][0]
+        v2 = feats[p2][0]
 
         scores += [np.sum(v1*v2)]
         labels += [verify_lb[c]]
