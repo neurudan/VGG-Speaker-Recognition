@@ -113,29 +113,23 @@ def main():
                           callbacks=callbacks,
                           verbose=1)
 
-    verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
-    verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
-    verify_extended = load_verify_list('../meta/voxceleb1_veri_test_extended.txt')
+    #verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
+    #verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
+    #verify_extended = load_verify_list('../meta/voxceleb1_veri_test_extended.txt')
 
     verify_normal = load_verify_list('../meta/trash.txt')
-    verify_hard = load_verify_list('../meta/trash.txt')
-    verify_extended = load_verify_list('../meta/trash.txt')
+    verify_hard = verify_normal[:]
+    verify_extended = verify_normal[:]
 
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
 
     test_generator = eval_cb.test_generator
-    print('debug1')
     test_generator.build_index_list(unique_list)
-    print('debug11')
     test_generator.fill_index_queue()
-    print('debug2')
     embeddings = generate_embeddings(network_eval, test_generator)
     
-    print('debug3')
     eer_normal = calculate_eer(verify_normal, embeddings)
-    print('debug4')
     eer_hard = calculate_eer(verify_hard, embeddings)
-    print('debug5')
     eer_extended = calculate_eer(verify_extended, embeddings)
 
     wandb.log({'EER_normal': eer_normal,
@@ -143,6 +137,7 @@ def main():
                'EER_extended': eer_extended})
 
     test_generator.terminate()
+    trn_gen.terminate()
 
 
 
