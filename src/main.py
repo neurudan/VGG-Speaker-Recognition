@@ -46,7 +46,6 @@ parser.add_argument('--warmup_ratio', default=0, type=float)
 parser.add_argument('--loss', default='softmax', choices=['softmax', 'amsoftmax'], type=str)
 parser.add_argument('--optimizer', default='adam', choices=['adam', 'sgd'], type=str)
 parser.add_argument('--qsize', default=100, type=int)
-parser.add_argument('--qsize_test', default=1000, type=int)
 parser.add_argument('--n_train_proc', default=32, type=int)
 parser.add_argument('--n_test_proc', default=100, type=int)
 parser.add_argument('--ohem_level', default=0, type=int,
@@ -77,7 +76,7 @@ def main():
     print('==> Initialize Data Generators')
     print()
     trn_gen = DataGenerator(**params)
-    eval_cb = EvalCallback(args.n_test_proc, args.qsize_test, params['normalize'])
+    eval_cb = EvalCallback(args.n_test_proc, params['normalize'])
     print()
     print()
 
@@ -113,9 +112,6 @@ def main():
                           callbacks=callbacks,
                           verbose=1)
 
-    trn_gen.terminate()
-    eval_cb.test_generator.terminate()
-
     verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
     verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
     verify_extended = load_verify_list('../meta/voxceleb1_veri_test_extended.txt')
@@ -126,8 +122,10 @@ def main():
 
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
 
-    test_generator = TestDataGenerator(args.n_test_proc, args.qsize_test, unique_list, params['normalize'])
+    test_generator = eval_cb.test_generator
     print('debug1')
+    test_generator.build_index_list(unique_list)
+    print('debug11')
     test_generator.fill_index_queue()
     print('debug2')
     embeddings = generate_embeddings(network_eval, test_generator)

@@ -46,11 +46,12 @@ def create_unique_list(verify_lists):
 
 
 class EvalCallback(Callback):
-    def __init__(self, n_proc, qsize, normalize):
+    def __init__(self, n_proc, normalize):
         self.model_eval = None
         self.full_list = load_verify_list('../meta/trash.txt')
         unique_list = create_unique_list([self.full_list])
-        self.test_generator = TestDataGenerator(qsize, n_proc, unique_list, normalize)
+        self.test_generator = TestDataGenerator(n_proc, normalize)
+        self.test_generator.build_index_list(unique_list)
 
     def on_epoch_end(self, epoch, logs):
         embeddings = generate_embeddings(self.model_eval, self.test_generator)

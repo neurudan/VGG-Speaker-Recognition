@@ -10,16 +10,20 @@ import random
 from multiprocessing import Process, Queue
 
 class TestDataGenerator():
-    def __init__(self, qsize, n_proc, unique_list, normalize=True):
+    def __init__(self, n_proc, normalize=True):
         print('==> Setup Testing Data Generator')
         self.normalize = normalize
-        self.qsize = qsize
         self.n_proc = n_proc
-        self.unique_list = unique_list
 
         self.terminate_enqueuer = False
         self.h5_path = '/cluster/home/neurudan/datasets/vox1/vox1_vgg.h5'
+        
+        self.index_queue = Queue()
+        self.enqueuers = []
+        self.start()
 
+    def build_index_list(self, unique_list):
+        self.unique_list = unique_list
         speakers = {}
         for ID in unique_list:
             speaker, audio_name = ID.split('/')[0], '/'.join(ID.split('/')[1:])
@@ -35,10 +39,6 @@ class TestDataGenerator():
                     idx = audio_names.index(audio_name)
                     length = data['statistics/'+speaker][idx]
                     self.index_list.append((speaker, audio_name, idx, length))
-        
-        self.index_queue = Queue(len(self.index_list))
-        self.enqueuers = []
-        self.start()
 
     def enqueue(self):
         with h5py.File(self.h5_path, 'r') as data:
