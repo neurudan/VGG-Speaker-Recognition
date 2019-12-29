@@ -127,7 +127,7 @@ def main():
     test_generator.build_index_list(unique_list, True)
     test_generator.fill_index_queue(True)
     
-    embeddings = generate_embeddings(network_eval, test_generator)
+    embeddings = generate_embeddings(network_eval, test_generator, True)
 
     print('embeddings')
     print(list(embeddings.keys()))
