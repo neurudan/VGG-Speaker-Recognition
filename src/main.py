@@ -97,7 +97,6 @@ def main():
 
     model_path, _ = set_path(args)
     
-    eval_cb = EvalCallback(network_eval, params['n_proc'], params['qsize'], params['normalize'])
     normal_lr = keras.callbacks.LearningRateScheduler(step_decay)
     save_best = keras.callbacks.ModelCheckpoint(os.path.join(model_path, 'weights-{epoch:02d}-{acc:.3f}.h5'),
                                                 monitor='loss', mode='min', save_best_only=True)
