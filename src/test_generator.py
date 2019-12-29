@@ -14,7 +14,7 @@ class DataGenerator():
         self.normalize = normalize
 
         self.terminate_enqueuer = False
-        self.h5_path = '/cluster/home/neurudan/datasets/vox1/vox1_vox2.h5'
+        self.h5_path = '/cluster/home/neurudan/datasets/vox1/vox1_vgg.h5'
 
         speakers = {}
         for ID in unique_list:

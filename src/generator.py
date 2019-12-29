@@ -21,7 +21,7 @@ class DataGenerator(keras.utils.Sequence):
         self.batch_size = batch_size
 
         self.terminate_enqueuer = False
-        self.h5_path = '/cluster/home/neurudan/datasets/TIMIT/timit_vgg.h5'
+        self.h5_path = '/cluster/home/neurudan/datasets/vox2/vox2_vgg.h5'
 
         # Read Speaker List
         lines = []
