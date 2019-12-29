@@ -126,7 +126,7 @@ def main():
     test_generator = eval_cb.test_generator
     test_generator.build_index_list(unique_list)
     test_generator.fill_index_queue()
-    embeddings = generate_embeddings(network_eval, test_generator)
+    embeddings = generate_embeddings(network_eval, test_generator, True)
     
     eer_normal = calculate_eer(verify_normal, embeddings)
     eer_hard = calculate_eer(verify_hard, embeddings)
