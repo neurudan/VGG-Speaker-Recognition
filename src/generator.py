@@ -25,7 +25,7 @@ class DataGenerator(keras.utils.Sequence):
 
         # Read Speaker List
         lines = []
-        with open('../meta/timit_speakers_630_all.txt') as f:
+        with open('../meta/vox2_speakers_5994_dev.txt') as f:
             lines = f.readlines()
         lines = list(set(lines))
         if '\n' in lines:
