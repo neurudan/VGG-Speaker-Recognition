@@ -77,7 +77,6 @@ def main():
     print('==> Initialize Data Generators')
     print()
     trn_gen = DataGenerator(**params)
-    print()
     eval_cb = EvalCallback(args.n_test_proc, args.qsize_test, params['normalize'])
     print()
     print()
@@ -114,7 +113,7 @@ def main():
                           callbacks=callbacks,
                           verbose=1)
     trn_gen.terminate()
-
+    eval_cb.test_generator.terminate()
 
     verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
     verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
@@ -123,8 +122,10 @@ def main():
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
 
     test_generator = TestDataGenerator(args.n_test_proc, args.qsize_test, unique_list, params['normalize'])
+    test_generator.fill_index_queue()
     embeddings = generate_embeddings(network_eval, test_generator)
-    
+    test_generator.terminate()
+
     eer_normal = calculate_eer(verify_normal, embeddings)
     eer_hard = calculate_eer(verify_hard, embeddings)
     eer_extended = calculate_eer(verify_extended, embeddings)

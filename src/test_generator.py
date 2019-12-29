@@ -36,7 +36,9 @@ class TestDataGenerator():
                     length = data['statistics/'+speaker][idx]
                     self.index_list.append((speaker, audio_name, idx, length))
         
+        self.index_queue = Queue(len(self.index_list))
         self.enqueuers = []
+        self.start()
 
     def enqueue(self):
         with h5py.File(self.h5_path, 'r') as data:
@@ -56,30 +58,23 @@ class TestDataGenerator():
                 except:
                     pass
                     
-    
+    def fill_index_queue(self):
+        for index in self.index_list:
+            self.index_queue.put(index)
+
     def terminate(self):
-        print('==> Terminating Testing Enqueuers...')
         self.terminate_enqueuer = True
         one_alive = True
         while one_alive:
-            alives = 0
             one_alive = False
             for thread in self.enqueuers:
                 if thread.is_alive():
-                    alives += 1
                     one_alive = True
                     thread.terminate()
-            print('%d/%d'%(alives, len(self.enqueuers)))
-        for thread in self.enqueuers:
-            thread.terminate()
         self.enqueuers = []
         print('==> Testing Enqueuers Terminated')
     
     def start(self):
-        self.index_queue = Queue(len(self.index_list))
-        for index in self.index_list:
-            self.index_queue.put(index)
-
         self.sample_queue = Queue(self.qsize)
         for _ in range(self.n_proc):
             enqueuer = Process(target=self.enqueue)

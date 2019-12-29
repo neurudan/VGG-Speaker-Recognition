@@ -117,7 +117,6 @@ class DataGenerator(keras.utils.Sequence):
         self.index_queue = Queue(self.__len__())
         indexer = Process(target=self.index_enqueuer)
         indexer.start()
-        print('==> Training Indexer Started at PID: [%d]'%(indexer.pid,))
         
         self.enqueuers = [indexer]
         self.sample_queue = Queue(self.qsize)
