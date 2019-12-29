@@ -68,6 +68,7 @@ class TestDataGenerator():
                 if thread.is_alive():
                     alives += 1
                     one_alive = True
+                    thread.terminate()
             print('%d/%d'%(alives, len(self.enqueuers)))
         for thread in self.enqueuers:
             thread.terminate()
