@@ -3,7 +3,7 @@ from __future__ import print_function
 import os
 import sys
 import numpy as np
-from test_generator import DataGenerator
+from test_generator import TestDataGenerator
 sys.path.append('../tool')
 import toolkits
 import utils as ut
@@ -29,6 +29,8 @@ parser.add_argument('--aggregation_mode', default='gvlad', choices=['avg', 'vlad
 # set up learning rate, training loss and optimizer.
 parser.add_argument('--loss', default='softmax', choices=['softmax', 'amsoftmax'], type=str)
 parser.add_argument('--test_type', default='normal', choices=['normal', 'hard', 'extend'], type=str)
+parser.add_argument('--qsize', default=100, type=int)
+parser.add_argument('--n_proc', default=32, type=int)
 
 global args
 args = parser.parse_args()
@@ -53,12 +55,14 @@ def main():
     else:
         raise IOError('==> unknown test type.')
 
-    verify_lb = np.array([int(i[0]) for i in verify_list])
-    list1 = np.array([os.path.join(args.data_path, i[1]) for i in verify_list])
-    list2 = np.array([os.path.join(args.data_path, i[2]) for i in verify_list])
+    verify_lb = [int(i[0]) for i in verify_list]
 
-    total_list = np.concatenate((list1, list2))
-    unique_list = np.unique(total_list)
+    list1 = [i[1] for i in verify_list]
+    list2 = [i[2] for i in verify_list]
+
+    unique_list = list1[:]
+    unique_list.extend(list2)
+    unique_list = list(set(unique_list))
 
     # ==================================
     #       Get Model
@@ -72,9 +76,12 @@ def main():
               'n_classes': 5994,
               'sampling_rate': 16000,
               'normalize': True,
+              'unique_list': unique_list,
+              'qsize': args.qsize,
+              'n_proc': args.n_proc
               }
 
-    network_eval = model.vggvox_resnet2d_icassp(input_dim=params['dim'],
+    _, network_eval = model.vggvox_resnet2d_icassp(input_dim=params['dim'],
                                                 num_class=params['n_classes'],
                                                 mode='eval', args=args)
 
@@ -85,7 +92,7 @@ def main():
         if os.path.isfile(args.resume):
             network_eval.load_weights(os.path.join(args.resume), by_name=True)
             result_path = set_result_path(args)
-            print('==> successfully loading model {}.'.format(args.resume))
+            print('==> successfully loaded model {}.'.format(args.resume))
         else:
             raise IOError("==> no checkpoint found at '{}'".format(args.resume))
     else:
@@ -97,19 +104,19 @@ def main():
     # because each sample is of different lengths.
     total_length = len(unique_list)
     feats, scores, labels = {}, [], []
-    dgen = DataGenerator(unique_list, True)
-    for ID in tqdm.tqdm(unique_list, ncols=100, ascii=True, desc='generate embeddings'):
+    dgen = TestDataGenerator(**params)
+    for ID in tqdm.tqdm(unique_list, ncols=150, ascii=True, desc='==> generate embeddings : '):
         audio, sample = dgen.sample_queue.get()
         v = network_eval.predict(sample)
         feats[audio] = v
 
     # ==> compute the pair-wise similarity.
-    for c, (p1, p2) in enumerate(zip(list1, list2)):
+    for (lb, p1, p2) in zip(verify_lb, list1, list2):
         v1 = feats[p1][0]
         v2 = feats[p2][0]
 
         scores += [np.sum(v1*v2)]
-        labels += [verify_lb[c]]
+        labels += [lb]
         print('scores : {}, gt : {}'.format(scores[-1], verify_lb[c]))
 
     scores = np.array(scores)

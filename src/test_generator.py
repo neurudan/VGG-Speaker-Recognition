@@ -9,9 +9,13 @@ import random
 
 from multiprocessing import Process, Queue
 
-class DataGenerator():
-    def __init__(self, unique_list, normalize=True):
+class TestDataGenerator():
+    def __init__(self, qsize, n_proc, unique_list, normalize=True):
+        print('==> Setup Testing Data Generator')
         self.normalize = normalize
+        self.qsize = qsize
+        self.n_proc = n_proc
+        self.unique_list = unique_list
 
         self.terminate_enqueuer = False
         self.h5_path = '/cluster/home/neurudan/datasets/vox1/vox1_vgg.h5'
@@ -23,26 +27,21 @@ class DataGenerator():
                 speakers[speaker] = []
             speakers[speaker].append(audio_name)
 
-        self.index_queue = Queue(len(unique_list))
+        self.index_list = []
         with h5py.File(self.h5_path, 'r') as data:
-            for speaker in tqdm.tqdm(speakers, ncols=100, ascii=True, desc='build speaker statistics'):
+            for speaker in tqdm.tqdm(speakers, ncols=150, ascii=True, desc='==> Gather Sample Information'):
                 audio_names = list(data['audio_names/'+speaker])
                 for audio_name in speakers[speaker]:
                     idx = audio_names.index(audio_name)
                     length = data['statistics/'+speaker][idx]
-                    self.index_queue.put((speaker, audio_name, idx, length))
+                    self.index_list.append((speaker, audio_name, idx, length))
         
         self.enqueuers = []
-        self.sample_queue = Queue(100)
-        for _ in range(32):
-            enqueuer = Process(target=self.enqueue)
-            enqueuer.start()
-            self.enqueuers.append(enqueuer)
 
     def enqueue(self):
-        try:
-            with h5py.File(self.h5_path, 'r') as data:
-                while not self.terminate_enqueuer:
+        with h5py.File(self.h5_path, 'r') as data:
+            while not self.terminate_enqueuer:
+                try:
                     speaker, audio_name, idx, length = self.index_queue.get(timeout=0.5)
                         
                     sample = data['data/' + speaker][idx][:].reshape((257, length))
@@ -54,5 +53,30 @@ class DataGenerator():
                     sample = sample.reshape((1, 257, 2 * length, 1))
 
                     self.sample_queue.put((speaker+'/'+audio_name, sample))
-        except:
-            pass
+                except:
+                    pass
+    
+    def terminate(self):
+        print('==> Terminating Testing Enqueuers...')
+        self.terminate_enqueuer = True
+        one_alive = True
+        while one_alive:
+            one_alive = False
+            for thread in self.enqueuers:
+                if thread.is_alive():
+                    one_alive = True
+        for thread in self.enqueuers:
+            thread.terminate()
+        self.enqueuers = []
+        print('==> Testing Enqueuers Terminated')
+    
+    def start(self):
+        self.sample_queue = Queue(self.qsize)
+        pids = []
+        for _ in range(self.n_proc):
+            enqueuer = Process(target=self.enqueue)
+            enqueuer.start()
+            pids.append(str(enqueuer.pid))
+            self.enqueuers.append(enqueuer)
+        pids = ','.join(pids)
+        print('==> Training Enqueuers Started at PIDs: [%s]'%(pids,))

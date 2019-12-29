@@ -11,36 +11,35 @@ from multiprocessing import Process, Queue
 
 class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
-    def __init__(self, dim, mp_pooler, augmentation=True, batch_size=32, nfft=512, spec_len=250,
-                 win_length=400, sampling_rate=16000, hop_length=160, n_classes=5994, shuffle=True, normalize=True):
+    def __init__(self, n_proc, qsize, batch_size=32, spec_len=250, normalize=True):
         'Initialization'
+        
+        print('==> Setup Training Data Generator')
         self.spec_len = spec_len
         self.normalize = normalize
 
-        self.shuffle = shuffle
         self.batch_size = batch_size
+        self.qsize = qsize
+        self.n_proc = n_proc
 
         self.terminate_enqueuer = False
         self.h5_path = '/cluster/home/neurudan/datasets/vox2/vox2_vgg.h5'
 
         # Read Speaker List
-        lines = []
-        with open('../meta/vox2_speakers_5994_dev.txt') as f:
-            lines = f.readlines()
-        lines = list(set(lines))
-        if '\n' in lines:
-            lines.remove('\n')
         self.speakers = []
-        for line in lines:
-            if line[-1] == '\n':
-                line = line[:-1]
-            self.speakers.append(line)
+        with open('../meta/vox2_speakers_5994_dev.txt') as f:
+            lines = list(set(f.readlines()))
+            if '\n' in lines:
+                lines.remove('\n')
+            for line in lines:
+                if line[-1] == '\n':
+                    line = line[:-1]
+                self.speakers.append(line)
 
-        self.n_classes = len(self.speakers)
-
+        # Generate Sample Statistics
         self.list_IDs = []
         with h5py.File(self.h5_path, 'r') as data:
-            for speaker in tqdm.tqdm(self.speakers, ncols=100, ascii=True, desc='build speaker statistics'):
+            for speaker in tqdm.tqdm(self.speakers, ncols=150, ascii=True, desc='==> Gather Sample Information'):
                 times = []
                 speakers = []
                 ids = []
@@ -50,14 +49,15 @@ class DataGenerator(keras.utils.Sequence):
                         ids.append(i)
                         speakers.append(speaker)
                 self.list_IDs.extend(list(zip(speakers, ids, times)))
-        self.start_enqueuers()
 
-    def len(self):
-        return self.__len__()
+        self.n_classes = len(self.speakers)
+        self.steps_per_epoch = int(np.floor(len(self.list_IDs) / self.batch_size))
+        self.steps_per_epoch = 2
+
+        self.start()
 
     def __len__(self):
-        'Denotes the number of batches per epoch'
-        return int(np.floor(len(self.list_IDs) / self.batch_size))
+        return self.steps_per_epoch
 
     def enqueue(self):
         with h5py.File(self.h5_path, 'r') as data:
@@ -68,7 +68,6 @@ class DataGenerator(keras.utils.Sequence):
                 for speaker, idx, length in keys:
                     labels.append(self.speakers.index(speaker))
                     
-                    sample = None
                     start = np.random.randint(length*2 - self.spec_len)
                     sample = data['data/' + speaker][idx][:].reshape((257, length))
                     sample = np.append(sample, sample, axis=1)[:,start:start+self.spec_len]
@@ -76,10 +75,11 @@ class DataGenerator(keras.utils.Sequence):
                     if np.random.random() < 0.3:
                         sample = sample[:,::-1]
 
-                    mu = np.mean(sample, 0, keepdims=True)
-                    std = np.std(sample, 0, keepdims=True)
-
-                    samples.append((sample - mu) / (std + 1e-5))
+                    if self.normalize:
+                        mu = np.mean(sample, 0, keepdims=True)
+                        std = np.std(sample, 0, keepdims=True)
+                        sample = (sample - mu) / (std + 1e-5)
+                    samples.append(sample)
                 labels = np.eye(self.n_classes)[labels]
                 samples = np.array(samples)
                 samples = samples.reshape(samples.shape+(1,))
@@ -99,43 +99,34 @@ class DataGenerator(keras.utils.Sequence):
     def on_epoch_end(self):
         pass
 
-    def start_enqueuers(self):
-        self.index_queue = Queue(self.__len__())
-        self.indexer = Process(target=self.index_enqueuer)
-        self.indexer.start()
-
+    def terminate(self):
+        print('==> Terminating Training Enqueuers & Indexer...')
+        self.terminate_enqueuer = True
+        one_alive = True
+        while one_alive:
+            one_alive = False
+            for thread in self.enqueuers:
+                if thread.is_alive():
+                    one_alive = True
+        for thread in self.enqueuers:
+            thread.terminate()
         self.enqueuers = []
-        self.sample_queue = Queue(100)
-        for _ in range(32):
+        print('==> Training Enqueuers & Indexer Terminated')
+
+    def start(self):
+        self.index_queue = Queue(self.__len__())
+        indexer = Process(target=self.index_enqueuer)
+        indexer.start()
+        print('==> Training Indexer Started at PID: [%d]'%(indexer.pid,))
+        
+        self.enqueuers = [indexer]
+        self.sample_queue = Queue(self.qsize)
+        pids = []
+        for _ in range(self.n_proc):
             enqueuer = Process(target=self.enqueue)
             enqueuer.start()
+            pids.append(str(enqueuer.pid))
             self.enqueuers.append(enqueuer)
+        pids = ','.join(pids)
+        print('==> Training Enqueuers Started at PIDs: [%s]'%(pids,))
 
-
-def OHEM_generator(model, datagen, steps, propose_time, batch_size, dims, nclass):
-    # propose_time : number of candidate batches.
-    # prop : the number of hard batches for training.
-    step = 0
-    interval = np.array([i*(batch_size // propose_time) for i in range(propose_time)] + [batch_size])
-
-    while True:
-        if step == 0 or step > steps - propose_time:
-            step = 0
-            datagen.on_epoch_end()
-
-        # propose samples,
-        samples = np.empty((batch_size,) + dims)
-        targets = np.empty((batch_size, nclass))
-
-        for i in range(propose_time):
-            x_data, y_data = datagen.__getitem__(index=step+i)
-            preds = model.predict(x_data, batch_size=batch_size)   # prediction score
-            errs = np.sum(y_data * preds, -1)
-            err_sort = np.argsort(errs)
-
-            indices = err_sort[:(interval[i+1]-interval[i])]
-            samples[interval[i]:interval[i+1]] = x_data[indices]
-            targets[interval[i]:interval[i+1]] = y_data[indices]
-
-        step += propose_time
-        yield samples, targets

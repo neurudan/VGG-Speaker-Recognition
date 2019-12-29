@@ -7,6 +7,10 @@ import numpy as np
 import wandb
 from wandb.keras import WandbCallback
 
+from generator import DataGenerator
+from test_generator import TestDataGenerator
+from eval_callback import *
+
 sys.path.append('../tool')
 import toolkits
 
@@ -16,7 +20,7 @@ import atexit
 
 @atexit.register
 def terminate_subprocesses():
-    os.system('kill -9 $(pgrep -f "python main.py")')
+    os.system('pkill -u "neurudan"')
 
 # ===========================================
 #        Parse the argument
@@ -41,6 +45,8 @@ parser.add_argument('--lr', default=0.001, type=float)
 parser.add_argument('--warmup_ratio', default=0, type=float)
 parser.add_argument('--loss', default='softmax', choices=['softmax', 'amsoftmax'], type=str)
 parser.add_argument('--optimizer', default='adam', choices=['adam', 'sgd'], type=str)
+parser.add_argument('--qsize', default=100, type=int)
+parser.add_argument('--n_proc', default=32, type=int)
 parser.add_argument('--ohem_level', default=0, type=int,
                     help='pick hard samples from (ohem_level * batch_size) proposals, must be > 1')
 global args
@@ -57,24 +63,23 @@ def main():
     import generator
 
     # construct the data generator.
-    params = {'dim': (257, 250, 1),
-              'mp_pooler': toolkits.set_mp(processes=args.multiprocess),
-              'nfft': 512,
-              'spec_len': 250,
-              'win_length': 400,
-              'hop_length': 160,
-              'n_classes': 5994,
-              'sampling_rate': 16000,
+    params = {'spec_len': 250,
               'batch_size': args.batch_size,
-              'shuffle': True,
               'normalize': True,
+              'qsize': args.qsize,
+              'n_proc': args.n_proc
               }
 
     # Generators
-    trn_gen = generator.DataGenerator(**params)
-    network = model.vggvox_resnet2d_icassp(input_dim=params['dim'],
-                                           num_class=trn_gen.n_classes,
-                                           mode='train', args=args)
+    trn_gen = DataGenerator(**params)
+    print()
+    print('==> Initialize Data Generators')
+    print()
+    network, network_eval = model.vggvox_resnet2d_icassp(input_dim=(257, params['spec_len'], 1),
+                                                         num_class=trn_gen.n_classes,
+                                                         mode='train', args=args)
+    eval_cb = EvalCallback(network_eval, params['n_proc'], params['qsize'], params['normalize'])
+    print()
 
     # ==> load pre-trained model ???list_IDs_temp
     mgpu = len(keras.backend.tensorflow_backend._get_available_gpus())
@@ -85,28 +90,43 @@ def main():
             print('==> successfully loading model {}.'.format(args.resume))
         else:
             print("==> no checkpoint found at '{}'".format(args.resume))
-
     print(network.summary())
-    print('==> gpu {} is, training using'
-          'loss: {}, aggregation: {}, ohemlevel: {}'.format(args.gpu,
-                                                            args.loss, args.aggregation_mode, args.ohem_level))
+    print('==> gpu {} is, training using loss: {}, aggregation: {}'.format(args.gpu, args.loss, args.aggregation_mode))
 
-    model_path, log_path = set_path(args)
+    model_path, _ = set_path(args)
+    
+    eval_cb = EvalCallback(network_eval, params['n_proc'], params['qsize'], params['normalize'])
     normal_lr = keras.callbacks.LearningRateScheduler(step_decay)
-    callbacks = [keras.callbacks.ModelCheckpoint(os.path.join(model_path, 'weights-{epoch:02d}-{acc:.3f}.h5'),
-                                                 monitor='loss',
-                                                 mode='min',
-                                                 save_best_only=True),
-                 normal_lr, WandbCallback()]
+    save_best = keras.callbacks.ModelCheckpoint(os.path.join(model_path, 'weights-{epoch:02d}-{acc:.3f}.h5'),
+                                                monitor='loss', mode='min', save_best_only=True)
+
+    callbacks = [eval_cb, save_best, normal_lr, WandbCallback()]
 
     network.fit_generator(trn_gen,
-                          steps_per_epoch=trn_gen.len(),
+                          steps_per_epoch=trn_gen.steps_per_epoch,
                           epochs=args.epochs,
-                          max_queue_size=10,
                           callbacks=callbacks,
-                          use_multiprocessing=False,
-                          workers=1,
                           verbose=1)
+    trn_gen.terminate()
+
+
+    verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
+    verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
+    verify_extended = load_verify_list('../meta/voxceleb1_veri_test_extended.txt')
+
+    unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
+
+    test_generator = TestDataGenerator(params['qsize'], params['n_proc'], unique_list, params['normalize'])
+    embeddings = generate_embeddings(network_eval, test_generator)
+    
+    eer_normal = calculate_eer(verify_normal, embeddings)
+    eer_hard = calculate_eer(verify_hard, embeddings)
+    eer_extended = calculate_eer(verify_extended, embeddings)
+
+    wandb.log({'EER_normal': eer_normal,
+               'EER_hard': eer_hard,
+               'EER_extended': eer_extended})
+
 
 
 def step_decay(epoch):
@@ -134,7 +154,7 @@ def step_decay(epoch):
         if epoch < milestone[s]:
             lr = init_lr * gamma[s]
             break
-    print('Learning rate for epoch {} is {}.'.format(epoch + 1, lr))
+    print('==> Learning rate for epoch {} is {}.'.format(epoch + 1, lr))
     return np.float(lr)
 
 
