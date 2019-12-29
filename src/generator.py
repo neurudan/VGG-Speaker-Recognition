@@ -100,7 +100,6 @@ class DataGenerator(keras.utils.Sequence):
         pass
 
     def terminate(self):
-        print('==> Terminating Training Enqueuers & Indexer...')
         self.terminate_enqueuer = True
         one_alive = True
         while one_alive:
@@ -108,8 +107,7 @@ class DataGenerator(keras.utils.Sequence):
             for thread in self.enqueuers:
                 if thread.is_alive():
                     one_alive = True
-        for thread in self.enqueuers:
-            thread.terminate()
+                    thread.terminate()
         self.enqueuers = []
         print('==> Training Enqueuers & Indexer Terminated')
 
