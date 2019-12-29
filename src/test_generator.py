@@ -62,10 +62,13 @@ class TestDataGenerator():
         self.terminate_enqueuer = True
         one_alive = True
         while one_alive:
+            alives = 0
             one_alive = False
             for thread in self.enqueuers:
                 if thread.is_alive():
+                    alives += 1
                     one_alive = True
+            print('%d/%d'%(alives, len(self.enqueuers)))
         for thread in self.enqueuers:
             thread.terminate()
         self.enqueuers = []
@@ -77,11 +80,7 @@ class TestDataGenerator():
             self.index_queue.put(index)
 
         self.sample_queue = Queue(self.qsize)
-        pids = []
         for _ in range(self.n_proc):
             enqueuer = Process(target=self.enqueue)
             enqueuer.start()
-            pids.append(str(enqueuer.pid))
             self.enqueuers.append(enqueuer)
-        pids = ','.join(pids)
-        print('==> Training Enqueuers Started at PIDs: [%s]'%(pids,))

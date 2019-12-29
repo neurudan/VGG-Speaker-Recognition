@@ -121,12 +121,8 @@ class DataGenerator(keras.utils.Sequence):
         
         self.enqueuers = [indexer]
         self.sample_queue = Queue(self.qsize)
-        pids = []
         for _ in range(self.n_proc):
             enqueuer = Process(target=self.enqueue)
             enqueuer.start()
-            pids.append(str(enqueuer.pid))
             self.enqueuers.append(enqueuer)
-        pids = ','.join(pids)
-        print('==> Training Enqueuers Started at PIDs: [%s]'%(pids,))
 
