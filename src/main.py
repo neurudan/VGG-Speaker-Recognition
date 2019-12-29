@@ -124,26 +124,9 @@ def main():
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
 
     test_generator = eval_cb.test_generator
-    test_generator.build_index_list(unique_list, True)
-    test_generator.fill_index_queue(True)
+    test_generator.build_index_list(unique_list)
     
-    embeddings = generate_embeddings(network_eval, test_generator, True)
-
-    print('embeddings')
-    print(list(embeddings.keys()))
-    print(len(list(embeddings.keys())))
-    print(list(set(list(embeddings.keys()))))
-    print(len(list(set(list(embeddings.keys())))))
-    print('unique_list')
-    print(unique_list)
-    print(len(unique_list))
-    print(list(set(unique_list)))
-    print(len(list(set(unique_list))))
-    print('verify_normal')
-    print(verify_normal)
-    print(len(verify_normal))
-    print(list(set(verify_normal)))
-    print(len(list(set(verify_normal))))
+    embeddings = generate_embeddings(network_eval, test_generator)
     
     eer_normal = calculate_eer(verify_normal, embeddings)
     eer_hard = calculate_eer(verify_hard, embeddings)

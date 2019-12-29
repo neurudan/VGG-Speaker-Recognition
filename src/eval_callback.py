@@ -9,20 +9,12 @@ import sys
 sys.path.append('../tool')
 import toolkits
 
-def generate_embeddings(model_eval, test_generator, verbose=False):
+def generate_embeddings(model_eval, test_generator):
     test_generator.fill_index_queue()
     embeddings = {}
-    names = []
     for _ in tqdm.tqdm(test_generator.unique_list, ncols=150, ascii=True, desc='==> generate embeddings'):
         audio, sample = test_generator.sample_queue.get()
         embeddings[audio] = model_eval.predict(sample)
-        names.append(audio)
-    if verbose:
-        print('generate embeddings')
-        print(names)
-        print(len(names))
-        print(list(set(names)))
-        print(len(list(set(names))))
     return embeddings
 
 def calculate_eer(full_list, embeddings):
