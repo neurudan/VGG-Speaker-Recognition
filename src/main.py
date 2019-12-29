@@ -124,8 +124,8 @@ def main():
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
 
     test_generator = eval_cb.test_generator
-    test_generator.build_index_list(unique_list)
-    test_generator.fill_index_queue()
+    test_generator.build_index_list(unique_list, True)
+    test_generator.fill_index_queue(True)
     
     embeddings = generate_embeddings(network_eval, test_generator)
 

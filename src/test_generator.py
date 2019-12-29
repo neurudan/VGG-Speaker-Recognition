@@ -23,7 +23,7 @@ class TestDataGenerator():
         self.enqueuers = []
         self.start()
 
-    def build_index_list(self, unique_list):
+    def build_index_list(self, unique_list, verbose=False):
         self.unique_list = unique_list
         speakers = {}
         for ID in unique_list:
@@ -31,7 +31,7 @@ class TestDataGenerator():
             if speaker not in speakers:
                 speakers[speaker] = []
             speakers[speaker].append(audio_name)
-
+        names = []
         self.index_list = []
         with h5py.File(self.h5_path, 'r') as data:
             for speaker in tqdm.tqdm(speakers, ncols=150, ascii=True, desc='==> Gather Sample Information'):
@@ -39,7 +39,11 @@ class TestDataGenerator():
                 for audio_name in speakers[speaker]:
                     idx = audio_names.index(audio_name)
                     length = data['statistics/'+speaker][idx]
+                    names.append(speaker+'/'+audio_name)
                     self.index_list.append((speaker, audio_name, idx, length))
+        if verbose:
+            print('build_index_list')
+            print(names)
 
     def enqueue(self):
         with h5py.File(self.h5_path, 'r') as data:
@@ -59,9 +63,14 @@ class TestDataGenerator():
                 except:
                     pass
                     
-    def fill_index_queue(self):
+    def fill_index_queue(self, verbose=False):
+        names = []
         for index in self.index_list:
+            names.append(index[0]+'/'+index[1])
             self.index_queue.put(index)
+        if verbose:
+            print('index_queue')
+            print(names)
 
     def terminate(self):
         self.terminate_enqueuer = True
