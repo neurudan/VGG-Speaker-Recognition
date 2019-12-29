@@ -52,7 +52,6 @@ class DataGenerator(keras.utils.Sequence):
 
         self.n_classes = len(self.speakers)
         self.steps_per_epoch = int(np.floor(len(self.list_IDs) / self.batch_size))
-        self.steps_per_epoch = 2
 
         self.start()
 
