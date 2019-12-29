@@ -46,7 +46,9 @@ parser.add_argument('--warmup_ratio', default=0, type=float)
 parser.add_argument('--loss', default='softmax', choices=['softmax', 'amsoftmax'], type=str)
 parser.add_argument('--optimizer', default='adam', choices=['adam', 'sgd'], type=str)
 parser.add_argument('--qsize', default=100, type=int)
-parser.add_argument('--n_proc', default=32, type=int)
+parser.add_argument('--qsize_test', default=1000, type=int)
+parser.add_argument('--n_train_proc', default=32, type=int)
+parser.add_argument('--n_test_proc', default=100, type=int)
 parser.add_argument('--ohem_level', default=0, type=int,
                     help='pick hard samples from (ohem_level * batch_size) proposals, must be > 1')
 global args
@@ -67,7 +69,7 @@ def main():
               'batch_size': args.batch_size,
               'normalize': True,
               'qsize': args.qsize,
-              'n_proc': args.n_proc
+              'n_proc': args.n_train_proc
               }
 
     # Generators
@@ -76,7 +78,7 @@ def main():
     print()
     trn_gen = DataGenerator(**params)
     print()
-    eval_cb = EvalCallback(params['n_proc'], params['qsize'], params['normalize'])
+    eval_cb = EvalCallback(args.n_test_proc, args.qsize_test, params['normalize'])
     print()
     print()
 
@@ -120,7 +122,7 @@ def main():
 
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
 
-    test_generator = TestDataGenerator(params['qsize'], params['n_proc'], unique_list, params['normalize'])
+    test_generator = TestDataGenerator(args.n_test_proc, args.qsize_test, unique_list, params['normalize'])
     embeddings = generate_embeddings(network_eval, test_generator)
     
     eer_normal = calculate_eer(verify_normal, embeddings)

@@ -49,7 +49,7 @@ def create_unique_list(verify_lists):
 class EvalCallback(Callback):
     def __init__(self, n_proc, qsize, normalize):
         self.model_eval = None
-        self.full_list = load_verify_list('../meta/voxceleb1_veri_test.txt')
+        self.full_list = load_verify_list('../meta/trash.txt')
         unique_list = create_unique_list([self.full_list])
         self.test_generator = TestDataGenerator(qsize, n_proc, unique_list, normalize)
 
