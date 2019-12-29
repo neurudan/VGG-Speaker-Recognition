@@ -80,7 +80,7 @@ def main():
     print()
     print()
 
-    network, network_eval = model.vggvox_resnet2d_icassp(input_dim=(257, params['spec_len'], 1),
+    network, network_eval = model.vggvox_resnet2d_icassp(input_dim=(257, None, 1),
                                                          num_class=trn_gen.n_classes,
                                                          mode='train', args=args)
 
