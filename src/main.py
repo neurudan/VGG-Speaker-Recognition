@@ -113,6 +113,9 @@ def main():
                           callbacks=callbacks,
                           verbose=1)
 
+    trn_gen.terminate()
+    eval_cb.test_generator.terminate()
+
     verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
     verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
     verify_extended = load_verify_list('../meta/voxceleb1_veri_test_extended.txt')
@@ -140,8 +143,6 @@ def main():
                'EER_hard': eer_hard,
                'EER_extended': eer_extended})
 
-    trn_gen.terminate()
-    eval_cb.test_generator.terminate()
     test_generator.terminate()
 
 
