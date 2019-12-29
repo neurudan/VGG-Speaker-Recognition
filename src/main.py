@@ -75,7 +75,10 @@ def main():
     print('==> Initialize Data Generators')
     print()
     trn_gen = DataGenerator(**params)
+    print()
     eval_cb = EvalCallback(params['n_proc'], params['qsize'], params['normalize'])
+    print()
+    print()
 
     network, network_eval = model.vggvox_resnet2d_icassp(input_dim=(257, params['spec_len'], 1),
                                                          num_class=trn_gen.n_classes,

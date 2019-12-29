@@ -53,8 +53,9 @@ class TestDataGenerator():
                     sample = sample.reshape((1, 257, 2 * length, 1))
 
                     self.sample_queue.put((speaker+'/'+audio_name, sample))
-                except:
-                    pass
+                except Exception as e:
+                    print(e)
+                    
     
     def terminate(self):
         print('==> Terminating Testing Enqueuers...')
@@ -71,6 +72,10 @@ class TestDataGenerator():
         print('==> Testing Enqueuers Terminated')
     
     def start(self):
+        self.index_queue = Queue(len(self.index_list))
+        for index in self.index_list:
+            self.index_queue.put(index)
+
         self.sample_queue = Queue(self.qsize)
         pids = []
         for _ in range(self.n_proc):
