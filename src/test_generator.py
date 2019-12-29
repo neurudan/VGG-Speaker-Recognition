@@ -53,8 +53,8 @@ class TestDataGenerator():
                     sample = sample.reshape((1, 257, 2 * length, 1))
 
                     self.sample_queue.put((speaker+'/'+audio_name, sample))
-                except Exception as e:
-                    print(e)
+                except:
+                    pass
                     
     
     def terminate(self):
