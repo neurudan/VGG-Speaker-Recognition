@@ -124,11 +124,16 @@ def main():
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
 
     test_generator = TestDataGenerator(args.n_test_proc, args.qsize_test, unique_list, params['normalize'])
+    print('debug1')
     test_generator.fill_index_queue()
+    print('debug2')
     embeddings = generate_embeddings(network_eval, test_generator)
-
+    
+    print('debug3')
     eer_normal = calculate_eer(verify_normal, embeddings)
+    print('debug4')
     eer_hard = calculate_eer(verify_hard, embeddings)
+    print('debug5')
     eer_extended = calculate_eer(verify_extended, embeddings)
 
     wandb.log({'EER_normal': eer_normal,
