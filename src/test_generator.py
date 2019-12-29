@@ -44,6 +44,9 @@ class TestDataGenerator():
         if verbose:
             print('build_index_list')
             print(names)
+            print(len(names))
+            print(list(set(names)))
+            print(len(list(set(names))))
 
     def enqueue(self):
         with h5py.File(self.h5_path, 'r') as data:
@@ -71,6 +74,9 @@ class TestDataGenerator():
         if verbose:
             print('index_queue')
             print(names)
+            print(len(names))
+            print(list(set(names)))
+            print(len(list(set(names))))
 
     def terminate(self):
         self.terminate_enqueuer = True
