@@ -130,7 +130,7 @@ def main():
     embeddings = generate_embeddings(network_eval, test_generator)
 
     print('embeddings')
-    print(embeddings)
+    print(list(embeddings.keys()))
     print('unique_list')
     print(unique_list)
     print('verify_normal')
