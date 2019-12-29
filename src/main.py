@@ -46,6 +46,7 @@ parser.add_argument('--warmup_ratio', default=0, type=float)
 parser.add_argument('--loss', default='softmax', choices=['softmax', 'amsoftmax'], type=str)
 parser.add_argument('--optimizer', default='adam', choices=['adam', 'sgd'], type=str)
 parser.add_argument('--qsize', default=100, type=int)
+parser.add_argument('--qsize_test', default=1000, type=int)
 parser.add_argument('--n_train_proc', default=32, type=int)
 parser.add_argument('--n_test_proc', default=100, type=int)
 parser.add_argument('--ohem_level', default=0, type=int,
@@ -76,7 +77,7 @@ def main():
     print('==> Initialize Data Generators')
     print()
     trn_gen = DataGenerator(**params)
-    eval_cb = EvalCallback(args.n_test_proc, params['normalize'])
+    eval_cb = EvalCallback(args.n_test_proc, args.qsize_test, params['normalize'])
     print()
     print()
 

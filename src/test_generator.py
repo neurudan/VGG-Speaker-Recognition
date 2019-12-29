@@ -10,10 +10,11 @@ import random
 from multiprocessing import Process, Queue
 
 class TestDataGenerator():
-    def __init__(self, n_proc, normalize=True):
+    def __init__(self, qsize, n_proc, normalize=True):
         print('==> Setup Testing Data Generator')
         self.normalize = normalize
         self.n_proc = n_proc
+        self.qsize = qsize
 
         self.terminate_enqueuer = False
         self.h5_path = '/cluster/home/neurudan/datasets/vox1/vox1_vgg.h5'
