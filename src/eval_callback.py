@@ -10,11 +10,11 @@ sys.path.append('../tool')
 import toolkits
 
 def generate_embeddings(model_eval, test_generator):
-    test_generator.fill_index_queue()
     embeddings = {}
     for _ in tqdm.tqdm(test_generator.unique_list, ncols=150, ascii=True, desc='==> generate embeddings'):
         audio, sample = test_generator.sample_queue.get()
         embeddings[audio] = model_eval.predict(sample)
+    test_generator.fill_index_queue()
     return embeddings
 
 def calculate_eer(full_list, embeddings):
@@ -48,7 +48,7 @@ def create_unique_list(verify_lists):
 class EvalCallback(Callback):
     def __init__(self, n_proc, qsize, normalize):
         self.model_eval = None
-        self.full_list = load_verify_list('../meta/trash.txt')
+        self.full_list = load_verify_list('../meta/voxceleb1_veri_test.txt')
         unique_list = create_unique_list([self.full_list])
         self.test_generator = TestDataGenerator(qsize, n_proc, normalize)
         self.test_generator.build_index_list(unique_list)

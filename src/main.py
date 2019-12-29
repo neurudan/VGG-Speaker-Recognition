@@ -113,13 +113,9 @@ def main():
                           callbacks=callbacks,
                           verbose=1)
 
-    #verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
-    #verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
-    #verify_extended = load_verify_list('../meta/voxceleb1_veri_test_extended.txt')
-
-    verify_normal = load_verify_list('../meta/trash.txt')
-    verify_hard = verify_normal[:]
-    verify_extended = verify_normal[:]
+    verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
+    verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
+    verify_extended = load_verify_list('../meta/voxceleb1_veri_test_extended.txt')
 
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
 
