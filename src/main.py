@@ -71,15 +71,17 @@ def main():
               }
 
     # Generators
-    trn_gen = DataGenerator(**params)
     print()
     print('==> Initialize Data Generators')
     print()
+    trn_gen = DataGenerator(**params)
+    eval_cb = EvalCallback(params['n_proc'], params['qsize'], params['normalize'])
+
     network, network_eval = model.vggvox_resnet2d_icassp(input_dim=(257, params['spec_len'], 1),
                                                          num_class=trn_gen.n_classes,
                                                          mode='train', args=args)
-    eval_cb = EvalCallback(network_eval, params['n_proc'], params['qsize'], params['normalize'])
-    print()
+
+    eval_cb.model_eval = network_eval
 
     # ==> load pre-trained model ???list_IDs_temp
     mgpu = len(keras.backend.tensorflow_backend._get_available_gpus())
