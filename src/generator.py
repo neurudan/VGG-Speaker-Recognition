@@ -148,9 +148,6 @@ class DataGenerator(keras.utils.Sequence):
                 index_queue.put(indices[i*batch_size:(i*batch_size)+batch_size])
 
     def __getitem__(self, index):
-        print()
-        print(self.sample_queue.qsize())
-        print()
         return self.sample_queue.get()
 
     def on_epoch_end(self):
