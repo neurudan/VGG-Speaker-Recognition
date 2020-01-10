@@ -155,6 +155,7 @@ def main():
         wandb.log({'EER': eer,
                    'acc': h.history['acc'][0],
                    'loss': h.history['loss'][0]})
+        initial_epoch = False
 
 
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
