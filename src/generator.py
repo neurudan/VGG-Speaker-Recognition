@@ -88,7 +88,7 @@ class DataGenerator(keras.utils.Sequence):
         self.sample_enqueuer_terminator.value = 0
         args = (self.sample_enqueuer_terminator, self.index_queue, self.sample_queue, 
                 self.h5_path, self.n_speakers, self.spec_len, self.n_speakers)
-        for _ in range(self.n_proc):
+        for _ in range(n_proc):
             enqueuer = Process(target=self.enqueue_samples, args=args)
             enqueuer.start()
             self.enqueuers.append(enqueuer)
