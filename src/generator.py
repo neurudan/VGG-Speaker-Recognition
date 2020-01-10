@@ -148,10 +148,11 @@ class DataGenerator(keras.utils.Sequence):
 
     def __getitem__(self, index):
         s = time.time()
-        wandb.log({'sample_qsize':self.sample_queue.qsize(),
-                   'index_qsize':self.index_queue.qsize()})
+        sample = self.sample_queue.get()
         print(time.time()-s)
-        return self.sample_queue.get()
+        print(self.sample_queue.qsize())
+        print()
+        return sample
 
     def on_epoch_end(self):
         pass

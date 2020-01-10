@@ -155,8 +155,7 @@ def main():
                    'loss': h.history['loss'][0],
                    'lr': step_decay(epoch),
                    'pre_acc': pre_acc,
-                   'pre_loss': pre_loss,
-                   'epoch': epoch})
+                   'pre_loss': pre_loss})
         initial_epoch = False
 
 
