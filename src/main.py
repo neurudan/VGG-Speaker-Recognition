@@ -154,7 +154,8 @@ def main():
         eer = calculate_eer(eval_cb.full_list, embeddings)
         wandb.log({'EER': eer,
                    'acc': h.history['acc'][0],
-                   'loss': h.history['loss'][0]})
+                   'loss': h.history['loss'][0],
+                   'lr': step_decay(epoch)})
         initial_epoch = False
 
 

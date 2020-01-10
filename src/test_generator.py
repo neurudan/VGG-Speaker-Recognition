@@ -86,6 +86,6 @@ class TestDataGenerator():
     def start(self, n_proc):
         self.terminator.value = 0
         for _ in range(n_proc):
-            enqueuer = Process(target=self.enqueue, args=(self.terminator))
+            enqueuer = Process(target=self.enqueue, args=(self.terminator,))
             enqueuer.start()
             self.enqueuers.append(enqueuer)
