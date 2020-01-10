@@ -115,7 +115,7 @@ def main():
 
     initial_epoch = True
 
-    for epoch in range(args.epochs):
+    for epoch in range(int(args.epochs / 2)):
         pre_acc = 0.0
         pre_loss = 8.0
         if not initial_epoch:
@@ -142,8 +142,8 @@ def main():
         print("==> starting training phase")
         h = network.fit_generator(trn_gen,
                                   steps_per_epoch=trn_gen.steps_per_epoch,
-                                  epochs=epoch+1,
-                                  initial_epoch=epoch,
+                                  epochs=(epoch+1) * 2,
+                                  initial_epoch=epoch * 2,
                                   callbacks=callbacks,
                                   verbose=1)
 
@@ -151,8 +151,8 @@ def main():
         embeddings = generate_embeddings(eval_cb.model_eval, eval_cb.test_generator)
         eer = calculate_eer(eval_cb.full_list, embeddings)
         wandb.log({'EER': eer,
-                   'acc': h.history['acc'][0],
-                   'loss': h.history['loss'][0],
+                   'acc': np.mean(h.history['acc']),
+                   'loss': np.mean(h.history['loss']),
                    'lr': step_decay(epoch),
                    'pre_acc': pre_acc,
                    'pre_loss': pre_loss})
