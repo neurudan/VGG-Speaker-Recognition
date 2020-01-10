@@ -147,8 +147,10 @@ class DataGenerator(keras.utils.Sequence):
                 index_queue.put(indices[i*batch_size:(i*batch_size)+batch_size])
 
     def __getitem__(self, index):
+        s = time.time()
         wandb.log({'sample_qsize':self.sample_queue.qsize(),
                    'index_qsize':self.index_queue.qsize()})
+        print(time.time()-s)
         return self.sample_queue.get()
 
     def on_epoch_end(self):
