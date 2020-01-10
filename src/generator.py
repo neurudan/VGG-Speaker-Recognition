@@ -65,6 +65,7 @@ class DataGenerator(keras.utils.Sequence):
         self.start(n_proc)
 
 
+
     def redraw_speakers(self):
         self.index_enqueuer_terminator.value = 1
         clear_queue(self.index_queue)
@@ -147,12 +148,10 @@ class DataGenerator(keras.utils.Sequence):
                 index_queue.put(indices[i*batch_size:(i*batch_size)+batch_size])
 
     def __getitem__(self, index):
-        s = time.time()
-        sample = self.sample_queue.get()
-        print(time.time()-s)
+        print()
         print(self.sample_queue.qsize())
         print()
-        return sample
+        return self.sample_queue.get()
 
     def on_epoch_end(self):
         pass
