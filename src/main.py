@@ -128,7 +128,7 @@ def main():
 
 
             print("==> starting pretrain phase")
-            h = network.fit_generator(trn_gen,
+            h = network_pre.fit_generator(trn_gen,
                                       steps_per_epoch=trn_gen.steps_per_epoch,
                                       epochs=1,
                                       verbose=1)
