@@ -117,7 +117,6 @@ class DataGenerator(keras.utils.Sequence):
                 samples = []
                 labels = []
                 for label, speaker, idx, length in index_queue.get():
-                    print('works')
                     labels.append(label)
                     
                     start = np.random.randint(length*2 - spec_len)
