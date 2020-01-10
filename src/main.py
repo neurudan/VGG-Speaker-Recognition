@@ -50,7 +50,6 @@ parser.add_argument('--qsize_test', default=10000, type=int)
 parser.add_argument('--n_train_proc', default=32, type=int)
 parser.add_argument('--n_test_proc', default=100, type=int)
 parser.add_argument('--n_speakers', default=1000, type=int)
-parser.add_argument('--pre_epochs', default=2, type=int)
 
 parser.add_argument('--ohem_level', default=0, type=int,
                     help='pick hard samples from (ohem_level * batch_size) proposals, must be > 1')
@@ -117,7 +116,8 @@ def main():
     initial_epoch = True
 
     for epoch in range(args.epochs):
-        trn_gen.redraw_speakers()
+        pre_acc = 0.0
+        pre_loss = 8.0
         if not initial_epoch:
             # make all layers except the last one untrainable
             network_pre.compile(optimizer=keras.optimizers.Adam(lr=1e-3), 
@@ -128,16 +128,13 @@ def main():
 
 
             print("==> starting pretrain phase")
-            for i in range(args.pre_epochs):
-                h = network.fit_generator(trn_gen,
-                                        steps_per_epoch=trn_gen.steps_per_epoch,
-                                        epochs=i+1,
-                                        initial_epoch=i,
-                                        verbose=1)
-                
-                wandb.log({'pre_acc': h.history['acc'][0],
-                        'pre_loss': h.history['loss'][0]})
-
+            h = network.fit_generator(trn_gen,
+                                      steps_per_epoch=trn_gen.steps_per_epoch,
+                                      epochs=1,
+                                      verbose=1)
+            pre_acc = h.history['acc'][0]
+            pre_loss = h.history['loss'][0]
+            
             for layer in network_pre.layers:
                 layer.trainable = True
         
@@ -150,12 +147,15 @@ def main():
                                   callbacks=callbacks,
                                   verbose=1)
 
+        trn_gen.redraw_speakers()
         embeddings = generate_embeddings(eval_cb.model_eval, eval_cb.test_generator)
         eer = calculate_eer(eval_cb.full_list, embeddings)
         wandb.log({'EER': eer,
                    'acc': h.history['acc'][0],
                    'loss': h.history['loss'][0],
-                   'lr': step_decay(epoch)})
+                   'lr': step_decay(epoch),
+                   'pre_acc': pre_acc,
+                   'pre_loss': pre_loss})
         initial_epoch = False
 
 

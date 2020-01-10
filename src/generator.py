@@ -60,6 +60,7 @@ class DataGenerator(keras.utils.Sequence):
         self.index_queue = Queue(qsize)
         self.sample_queue = Queue(qsize)
 
+        self.redraw_speakers()
         self.start(n_proc)
 
 
