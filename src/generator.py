@@ -91,7 +91,7 @@ class DataGenerator(keras.utils.Sequence):
         for _ in range(n_proc):
             enqueuer = Process(target=self.enqueue_samples, args=args)
             enqueuer.start()
-            self.enqueuers.append(enqueuer)
+            self.sample_enqueuers.append(enqueuer)
             
     def terminate(self):
         self.index_enqueuer_terminator.value = 1
@@ -100,7 +100,7 @@ class DataGenerator(keras.utils.Sequence):
         while one_alive:
             one_alive = True if np.sum([1 if t.is_alive() else 0 for t in self.sample_enqueuers]) > 0 else False
             time.sleep(0.5)
-        self.enqueuers = []
+        self.sample_enqueuers = []
 
         clear_queue(self.index_queue)
         clear_queue(self.sample_queue)
