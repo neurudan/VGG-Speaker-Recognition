@@ -53,20 +53,21 @@ class TestDataGenerator():
     def enqueue(self, terminator):
         with h5py.File(self.h5_path, 'r') as data:
             while not terminator.value == 1:
-                try:
-                    speaker, audio_name, idx, length = self.index_queue.get(timeout=0.5)
-                        
-                    sample = data['data/' + speaker][idx][:].reshape((257, length))
-                    sample = np.append(sample, sample[:,::-1], axis=1)
-                    if self.normalize:
-                        mu = np.mean(sample, 0, keepdims=True)
-                        std = np.std(sample, 0, keepdims=True)
-                        sample = (sample - mu) / (std + 1e-5)
-                    sample = sample.reshape((1, 257, 2 * length, 1))
+                for _ in range(50):
+                    try:
+                        speaker, audio_name, idx, length = self.index_queue.get(timeout=0.5)
+                            
+                        sample = data['data/' + speaker][idx][:].reshape((257, length))
+                        sample = np.append(sample, sample[:,::-1], axis=1)
+                        if self.normalize:
+                            mu = np.mean(sample, 0, keepdims=True)
+                            std = np.std(sample, 0, keepdims=True)
+                            sample = (sample - mu) / (std + 1e-5)
+                        sample = sample.reshape((1, 257, 2 * length, 1))
 
-                    self.sample_queue.put((speaker+'/'+audio_name, sample))
-                except:
-                    pass
+                        self.sample_queue.put((speaker+'/'+audio_name, sample))
+                    except:
+                        pass
                     
     def fill_index_queue(self, verbose=False):
         for index in self.index_list:

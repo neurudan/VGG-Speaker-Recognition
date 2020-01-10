@@ -115,35 +115,37 @@ class DataGenerator(keras.utils.Sequence):
     def enqueue_samples(self, terminator, index_queue, sample_queue, h5_path, n_speakers, spec_len, normalize):
         with h5py.File(h5_path, 'r') as data:
             while not terminator.value == 1:
-                samples = []
-                labels = []
-                for label, speaker, idx, length in index_queue.get():
-                    labels.append(label)
-                    
-                    start = np.random.randint(length*2 - spec_len)
-                    sample = data['data/' + speaker][idx][:].reshape((257, length))
-                    sample = np.append(sample, sample, axis=1)[:,start:start+spec_len]
-                    
-                    if np.random.random() < 0.3:
-                        sample = sample[:,::-1]
+                for _ in range(50):
+                    samples = []
+                    labels = []
+                    for label, speaker, idx, length in index_queue.get():
+                        labels.append(label)
+                        
+                        start = np.random.randint(length*2 - spec_len)
+                        sample = data['data/' + speaker][idx][:].reshape((257, length))
+                        sample = np.append(sample, sample, axis=1)[:,start:start+spec_len]
+                        
+                        if np.random.random() < 0.3:
+                            sample = sample[:,::-1]
 
-                    if normalize:
-                        mu = np.mean(sample, 0, keepdims=True)
-                        std = np.std(sample, 0, keepdims=True)
-                        sample = (sample - mu) / (std + 1e-5)
-                    samples.append(sample)
-                labels = np.eye(n_speakers)[labels]
-                samples = np.array(samples)
-                samples = samples.reshape(samples.shape+(1,))
-                sample_queue.put((samples, labels))
+                        if normalize:
+                            mu = np.mean(sample, 0, keepdims=True)
+                            std = np.std(sample, 0, keepdims=True)
+                            sample = (sample - mu) / (std + 1e-5)
+                        samples.append(sample)
+                    labels = np.eye(n_speakers)[labels]
+                    samples = np.array(samples)
+                    samples = samples.reshape(samples.shape+(1,))
+                    sample_queue.put((samples, labels))
 
     def enqueue_indices(self, terminator, index_queue, indices, batch_size, steps):
         while not terminator.value == 1:
-            random.shuffle(indices)
-            for i in range(steps):
-                if terminator.value == 1:
-                    break
-                index_queue.put(indices[i*batch_size:(i*batch_size)+batch_size])
+            for _ in range(50):
+                random.shuffle(indices)
+                for i in range(steps):
+                    if terminator.value == 1:
+                        break
+                    index_queue.put(indices[i*batch_size:(i*batch_size)+batch_size])
 
     def __getitem__(self, index):
         return self.sample_queue.get()
