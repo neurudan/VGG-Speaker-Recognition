@@ -46,17 +46,23 @@ parser.add_argument('--warmup_ratio', default=0, type=float)
 parser.add_argument('--loss', default='softmax', choices=['softmax', 'amsoftmax'], type=str)
 parser.add_argument('--optimizer', default='adam', choices=['adam', 'sgd'], type=str)
 parser.add_argument('--qsize', default=1000, type=int)
-parser.add_argument('--qsize_test', default=1000, type=int)
+parser.add_argument('--qsize_test', default=10000, type=int)
 parser.add_argument('--n_train_proc', default=32, type=int)
 parser.add_argument('--n_test_proc', default=100, type=int)
+parser.add_argument('--n_speakers', default=1000, type=int)
+parser.add_argument('--pre_epochs', default=2, type=int)
+
 parser.add_argument('--ohem_level', default=0, type=int,
                     help='pick hard samples from (ohem_level * batch_size) proposals, must be > 1')
 global args
 args = parser.parse_args()
 
 def main():
-
     wandb.init()
+
+    verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
+    verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
+    verify_extended = load_verify_list('../meta/voxceleb1_veri_test_extended.txt')
 
     # gpu configuration
     toolkits.initialize_GPU(args)
@@ -69,7 +75,8 @@ def main():
               'batch_size': args.batch_size,
               'normalize': True,
               'qsize': args.qsize,
-              'n_proc': args.n_train_proc
+              'n_proc': args.n_train_proc,
+              'n_speakers': args.n_speakers
               }
 
     # Generators
@@ -81,9 +88,9 @@ def main():
     print()
     print()
 
-    network, network_eval = model.vggvox_resnet2d_icassp(input_dim=(257, None, 1),
-                                                         num_class=trn_gen.n_classes,
-                                                         mode='train', args=args)
+    network, network_eval, network_pre = model.vggvox_resnet2d_icassp(input_dim=(257, None, 1),
+                                                                      num_class=args.n_speakers,
+                                                                      mode='train', args=args)
 
     eval_cb.model_eval = network_eval
 
@@ -105,17 +112,50 @@ def main():
     save_best = keras.callbacks.ModelCheckpoint(os.path.join(model_path, 'weights-{epoch:02d}-{acc:.3f}.h5'),
                                                 monitor='loss', mode='min', save_best_only=True)
 
-    callbacks = [eval_cb, save_best, normal_lr, WandbCallback()]
+    callbacks = [save_best, normal_lr]
 
-    network.fit_generator(trn_gen,
-                          steps_per_epoch=trn_gen.steps_per_epoch,
-                          epochs=args.epochs,
-                          callbacks=callbacks,
-                          verbose=1)
+    initial_epoch = True
 
-    verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
-    verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
-    verify_extended = load_verify_list('../meta/voxceleb1_veri_test_extended.txt')
+    for epoch in range(args.epochs):
+        trn_gen.redraw_speakers()
+        if not initial_epoch:
+            # make all layers except the last one untrainable
+            network_pre.compile(optimizer=keras.optimizers.Adam(lr=1e-3), 
+                                loss='categorical_crossentropy', 
+                                metrics=['acc'])
+            for layer in network_pre.layers[:-1]:
+                layer.trainable = False
+
+
+            print("==> starting pretrain phase")
+            for i in range(args.pre_epochs):
+                h = network.fit_generator(trn_gen,
+                                        steps_per_epoch=trn_gen.steps_per_epoch,
+                                        epochs=i+1,
+                                        initial_epoch=i,
+                                        verbose=1)
+                
+                wandb.log({'pre_acc': h.history['acc'][0],
+                        'pre_loss': h.history['loss'][0]})
+
+            for layer in network_pre.layers:
+                layer.trainable = True
+        
+
+        print("==> starting training phase")
+        h = network.fit_generator(trn_gen,
+                                  steps_per_epoch=trn_gen.steps_per_epoch,
+                                  epochs=epoch+1,
+                                  initial_epoch=epoch,
+                                  callbacks=callbacks,
+                                  verbose=1)
+
+        embeddings = generate_embeddings(eval_cb.model_eval, eval_cb.test_generator)
+        eer = calculate_eer(eval_cb.full_list, embeddings)
+        wandb.log({'EER': eer,
+                   'acc': h.history['acc'][0],
+                   'loss': h.history['loss'][0]})
+
 
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
 
@@ -142,18 +182,15 @@ def step_decay(epoch):
     The learning rate begins at 10^initial_power,
     and decreases by a factor of 10 every step epochs.
     '''
-    half_epoch = args.epochs // 2
-    stage1, stage2, stage3 = int(half_epoch * 0.5), int(half_epoch * 0.8), half_epoch
-    stage4 = stage3 + stage1
-    stage5 = stage4 + (stage2 - stage1)
-    stage6 = args.epochs
+    epochs = args.epochs
+    stage1, stage2, stage3 = int(epochs * 0.5), int(epochs * 0.8), epochs
 
     if args.warmup_ratio:
-        milestone = [2, stage1, stage2, stage3, stage4, stage5, stage6]
-        gamma = [args.warmup_ratio, 1.0, 0.1, 0.01, 1.0, 0.1, 0.01]
+        milestone = [2, stage1, stage2, stage3]
+        gamma = [args.warmup_ratio, 1.0, 0.1, 0.01]
     else:
-        milestone = [stage1, stage2, stage3, stage4, stage5, stage6]
-        gamma = [1.0, 0.1, 0.01, 1.0, 0.1, 0.01]
+        milestone = [stage1, stage2, stage3]
+        gamma = [1.0, 0.1, 0.01]
 
     lr = 0.005
     init_lr = args.lr

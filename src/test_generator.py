@@ -7,12 +7,12 @@ import h5py
 import tqdm
 import random
 
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Value
 
 def clear_queue(queue):
     try:
         while True:
-            queue.get(timeout=2)
+            queue.get(timeout=10)
     except:
         pass
 
@@ -20,17 +20,14 @@ def clear_queue(queue):
 class TestDataGenerator():
     def __init__(self, qsize, n_proc, normalize=True):
         print('==> Setup Testing Data Generator')
-        self.normalize = normalize
-        self.n_proc = n_proc
-        self.qsize = qsize
-
-        self.terminate_enqueuer = False
         self.h5_path = '/cluster/home/neurudan/datasets/vox1/vox1_vgg.h5'
-        
-        self.sample_queue = Queue(self.qsize)
+        self.normalize = normalize
+
+        self.terminator = Value('i', 0)
+        self.sample_queue = Queue(qsize)
         self.index_queue = Queue()
         self.enqueuers = []
-        self.start()
+        self.start(n_proc)
 
     def build_index_list(self, unique_list):
         clear_queue(self.index_queue)
@@ -53,9 +50,9 @@ class TestDataGenerator():
                     self.index_list.append((speaker, audio_name, idx, length))
         self.fill_index_queue()
 
-    def enqueue(self):
+    def enqueue(self, terminator):
         with h5py.File(self.h5_path, 'r') as data:
-            while not self.terminate_enqueuer:
+            while not terminator.value == 1:
                 try:
                     speaker, audio_name, idx, length = self.index_queue.get(timeout=0.5)
                         
@@ -76,19 +73,19 @@ class TestDataGenerator():
             self.index_queue.put(index)
 
     def terminate(self):
-        self.terminate_enqueuer = True
+        self.terminator.value = 1
         one_alive = True
         while one_alive:
-            one_alive = False
-            for thread in self.enqueuers:
-                if thread.is_alive():
-                    one_alive = True
-                    thread.terminate()
+            n = np.sum([1 if t.is_alive() else 0 for t in self.enqueuers])
+            one_alive = True if n > 0 else False
+            time.sleep(0.01)
+        for t in self.enqueuers: t.terminate()
         self.enqueuers = []
         print('==> Testing Enqueuers Terminated')
     
-    def start(self):
-        for _ in range(self.n_proc):
-            enqueuer = Process(target=self.enqueue)
+    def start(self, n_proc):
+        self.terminator.value = 0
+        for _ in range(n_proc):
+            enqueuer = Process(target=self.enqueue, args=(self.terminator))
             enqueuer.start()
             self.enqueuers.append(enqueuer)
