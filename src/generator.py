@@ -81,6 +81,7 @@ class DataGenerator(keras.utils.Sequence):
 
         args = (self.index_enqueuer_terminator, self.index_queue, indices, self.batch_size, self.steps_per_epoch)
 
+        self.index_enqueuer_terminator.value = 0
         self.index_enqueuer = Process(target=self.enqueue_indices, args=args)
         self.index_enqueuer.start()
 
