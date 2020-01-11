@@ -118,10 +118,16 @@ def main():
     for epoch in range(int(args.epochs / 2)):
         pre_acc = 0.0
         pre_loss = 8.0
-        if not initial_epoch:
+        if initial_epoch:
             # make all layers except the last one untrainable
             for layer in network_pre.layers[:-1]:
                 layer.trainable = False
+            
+            for layer in network_pre.layers:
+                print(layer.trainable)
+            
+            for layer in network.layers:
+                print(layer.trainable)
             network_pre.compile(optimizer=keras.optimizers.Adam(lr=1e-3), 
                                 loss='categorical_crossentropy', 
                                 metrics=['acc'])
@@ -130,10 +136,10 @@ def main():
             print("==> starting pretrain phase")
             h = network_pre.fit_generator(trn_gen,
                                       steps_per_epoch=trn_gen.steps_per_epoch,
-                                      epochs=1,
+                                      epochs=2,
                                       verbose=1)
-            pre_acc = h.history['acc'][0]
-            pre_loss = h.history['loss'][0]
+            pre_acc = np.mean(h.history['acc'])
+            pre_loss = np.mean(h.history['loss'])
             
             for layer in network_pre.layers:
                 layer.trainable = True
