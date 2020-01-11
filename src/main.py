@@ -134,6 +134,16 @@ def main():
             network_pre.compile(optimizer=keras.optimizers.Adam(lr=1e-3), 
                                 loss='categorical_crossentropy', 
                                 metrics=['acc'])
+            
+            
+            print('\n\nafter compile\npre_net')
+            for layer in network_pre.layers:
+                print(layer.trainable)
+            
+            print('\n\nfull_net')
+            for layer in network.layers:
+                print(layer.trainable)
+            print('\n\n')
 
 
             print("==> starting pretrain phase")
