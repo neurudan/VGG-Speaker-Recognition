@@ -175,21 +175,16 @@ def vggvox_resnet2d_icassp(input_dim=(257, 250, 1), num_class=8631, mode='train'
     y_eval = keras.layers.Lambda(lambda x: keras.backend.l2_normalize(x, 1))(x)
 
     model = keras.models.Model(inputs, y, name='vggvox_resnet2D_{}_{}'.format(loss, aggregation))
-    model_pre = keras.models.Model(inputs, y, name='vggvox_resnet2D_{}_{}'.format(loss, aggregation))
     model_eval = keras.models.Model(inputs, y_eval)
 
     if mgpu > 1:
         model = ModelMGPU(model, gpus=mgpu)
         model_eval = ModelMGPU(model_eval, gpus=mgpu)
-        model_pre = ModelMGPU(model_pre, gpus=mgpu)
     # set up optimizer.
     if args.optimizer == 'adam':  
-        opt_1 = keras.optimizers.Adam(lr=1e-3)
-        opt_2 = keras.optimizers.Adam(lr=1e-3)
+        opt = keras.optimizers.Adam(lr=1e-3)
     elif args.optimizer =='sgd':  
-        opt_1 = keras.optimizers.SGD(lr=0.1, momentum=0.9, decay=0.0, nesterov=True)
-        opt_2 = keras.optimizers.SGD(lr=0.1, momentum=0.9, decay=0.0, nesterov=True)
+        opt = keras.optimizers.SGD(lr=0.1, momentum=0.9, decay=0.0, nesterov=True)
     else: raise IOError('==> unknown optimizer type')
-    model.compile(optimizer=opt_1, loss=trnloss, metrics=['acc'])
-    model_pre.compile(optimizer=opt_2, loss=trnloss, metrics=['acc'])
-    return model, model_eval, model_pre
+    model.compile(optimizer=opt, loss=trnloss, metrics=['acc'])
+    return model, model_eval

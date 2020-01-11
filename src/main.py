@@ -87,9 +87,9 @@ def main():
     print()
     print()
 
-    network, network_eval, network_pre = model.vggvox_resnet2d_icassp(input_dim=(257, None, 1),
-                                                                      num_class=args.n_speakers,
-                                                                      mode='train', args=args)
+    network, network_eval = model.vggvox_resnet2d_icassp(input_dim=(257, None, 1),
+                                                         num_class=args.n_speakers,
+                                                         mode='train', args=args)
 
     eval_cb.model_eval = network_eval
 
@@ -119,51 +119,24 @@ def main():
         pre_acc = 0.0
         pre_loss = 8.0
         if initial_epoch:
-
-            print('\n\nbefore change\npre_net')
-            for layer in network_pre.layers:
-                print(layer.trainable)
             
-            print('\n\nfull_net')
-            for layer in network.layers:
-                print(layer.trainable)
-            print('\n\n')
-            # make all layers except the last one untrainable
-            for layer in network_pre.layers[:-1]:
+            #optimizer_backup = network.optimizer
+
+            # make all layers except the last and first (input layer) one untrainable
+            for layer in network.layers[1:-1]:
                 layer.trainable = False
-            
-            print('\n\npre_net')
-            for layer in network_pre.layers:
-                print(layer.trainable)
-            
-            print('\n\nfull_net')
-            for layer in network.layers:
-                print(layer.trainable)
-            print('\n\n')
-            network_pre.compile(optimizer=keras.optimizers.Adam(lr=1e-3), 
-                                loss='categorical_crossentropy', 
-                                metrics=['acc'])
-            
-            
-            print('\n\nafter compile\npre_net')
-            for layer in network_pre.layers:
-                print(layer.trainable)
-            
-            print('\n\nfull_net')
-            for layer in network.layers:
-                print(layer.trainable)
-            print('\n\n')
 
+            #network.compile(optimizer=keras.optimizers.Adam(lr=1e-3), loss='categorical_crossentropy', metrics=['acc'])
 
             print("==> starting pretrain phase")
-            h = network_pre.fit_generator(trn_gen,
+            h = network.fit_generator(trn_gen,
                                       steps_per_epoch=trn_gen.steps_per_epoch,
                                       epochs=2,
                                       verbose=1)
             pre_acc = np.mean(h.history['acc'])
             pre_loss = np.mean(h.history['loss'])
             
-            for layer in network_pre.layers:
+            for layer in network.layers[1:-1]:
                 layer.trainable = True
         
 
@@ -181,7 +154,7 @@ def main():
         wandb.log({'EER': eer,
                    'acc': np.mean(h.history['acc']),
                    'loss': np.mean(h.history['loss']),
-                   'lr': step_decay(epoch),
+                   'lr': step_decay(epoch * 2),
                    'pre_acc': pre_acc,
                    'pre_loss': pre_loss})
         initial_epoch = False
@@ -229,7 +202,7 @@ def step_decay(epoch):
         if epoch < milestone[s]:
             lr = init_lr * gamma[s]
             break
-    print('==> Learning rate for epoch {} is {}.'.format(epoch + 1, lr))
+    #print('==> Learning rate for epoch {} is {}.'.format(epoch + 1, lr))
     return np.float(lr)
 
 
