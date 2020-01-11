@@ -103,7 +103,6 @@ class DataGenerator(keras.utils.Sequence):
 
         self.batch_size = batch_size
         self.steps_per_epoch = int(np.floor(len(self.indices) / batch_size))
-        self.steps_per_epoch = 2
         args = (self.index_enqueuer_terminator, self.index_queue, self.indices, batch_size, self.steps_per_epoch)
 
         self.index_enqueuer_terminator.value = 0
@@ -129,7 +128,6 @@ class DataGenerator(keras.utils.Sequence):
             indices.extend(list(zip(labels, spkrs, idxs, times)))
 
         self.steps_per_epoch = int(np.floor(len(indices) / self.batch_size))
-        self.steps_per_epoch = 2
 
         args = (self.index_enqueuer_terminator, self.index_queue, indices, self.batch_size, self.steps_per_epoch)
         self.indices = indices
