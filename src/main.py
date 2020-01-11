@@ -119,6 +119,15 @@ def main():
         pre_acc = 0.0
         pre_loss = 8.0
         if initial_epoch:
+
+            print('\n\nbefore change\npre_net')
+            for layer in network_pre.layers:
+                print(layer.trainable)
+            
+            print('\n\nfull_net')
+            for layer in network.layers:
+                print(layer.trainable)
+            print('\n\n')
             # make all layers except the last one untrainable
             for layer in network_pre.layers[:-1]:
                 layer.trainable = False
