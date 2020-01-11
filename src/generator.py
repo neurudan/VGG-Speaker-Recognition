@@ -11,13 +11,45 @@ import wandb
 from multiprocessing import Process, Queue, Value
 
 
-
 def clear_queue(queue):
     try:
         while True:
             queue.get(timeout=5)
     except:
         pass
+
+def enqueue_samples(terminator, index_queue, sample_queue, h5_path, n_speakers, spec_len, normalize):
+    with h5py.File(h5_path, 'r') as data:
+        while not terminator.value == 1:
+            samples = []
+            labels = []
+            for label, speaker, idx, length in index_queue.get():
+                labels.append(label)
+                
+                start = np.random.randint(length*2 - spec_len)
+                sample = data['data/' + speaker][idx][:].reshape((257, length))
+                sample = np.append(sample, sample, axis=1)[:,start:start+spec_len]
+                
+                if np.random.random() < 0.3:
+                    sample = sample[:,::-1]
+                if normalize:
+                    mu = np.mean(sample, 0, keepdims=True)
+                    std = np.std(sample, 0, keepdims=True)
+                    sample = (sample - mu) / (std + 1e-5)
+                samples.append(sample)
+            labels = np.eye(n_speakers)[labels]
+            samples = np.array(samples)
+            samples = samples.reshape(samples.shape+(1,))
+            sample_queue.put((samples, labels))
+
+def enqueue_indices(terminator, index_queue, indices, batch_size, steps):
+    while not terminator.value == 1:
+        random.shuffle(indices)
+        for i in range(steps):
+            if terminator.value == 1:
+                break
+            index_queue.put(indices[i*batch_size:(i*batch_size)+batch_size])
+
 
 class DataGenerator(keras.utils.Sequence):
 
@@ -65,7 +97,6 @@ class DataGenerator(keras.utils.Sequence):
         self.start(n_proc)
 
 
-
     def redraw_speakers(self):
         self.index_enqueuer_terminator.value = 1
         clear_queue(self.index_queue)
@@ -85,7 +116,7 @@ class DataGenerator(keras.utils.Sequence):
         args = (self.index_enqueuer_terminator, self.index_queue, indices, self.batch_size, self.steps_per_epoch)
 
         self.index_enqueuer_terminator.value = 0
-        self.index_enqueuer = Process(target=self.enqueue_indices, args=args)
+        self.index_enqueuer = Process(target=enqueue_indices, args=args)
         self.index_enqueuer.start()
 
     def start(self, n_proc):
@@ -93,7 +124,7 @@ class DataGenerator(keras.utils.Sequence):
         args = (self.sample_enqueuer_terminator, self.index_queue, self.sample_queue, 
                 self.h5_path, self.n_speakers, self.spec_len, self.n_speakers)
         for _ in range(n_proc):
-            enqueuer = Process(target=self.enqueue_samples, args=args)
+            enqueuer = Process(target=enqueue_samples, args=args)
             enqueuer.start()
             self.sample_enqueuers.append(enqueuer)
             
@@ -113,39 +144,6 @@ class DataGenerator(keras.utils.Sequence):
 
     def __len__(self):
         return self.steps_per_epoch
-
-    def enqueue_samples(self, terminator, index_queue, sample_queue, h5_path, n_speakers, spec_len, normalize):
-        with h5py.File(h5_path, 'r') as data:
-            while not terminator.value == 1:
-                samples = []
-                labels = []
-                for label, speaker, idx, length in index_queue.get():
-                    labels.append(label)
-                    
-                    start = np.random.randint(length*2 - spec_len)
-                    sample = data['data/' + speaker][idx][:].reshape((257, length))
-                    sample = np.append(sample, sample, axis=1)[:,start:start+spec_len]
-                    
-                    if np.random.random() < 0.3:
-                        sample = sample[:,::-1]
-
-                    if normalize:
-                        mu = np.mean(sample, 0, keepdims=True)
-                        std = np.std(sample, 0, keepdims=True)
-                        sample = (sample - mu) / (std + 1e-5)
-                    samples.append(sample)
-                labels = np.eye(n_speakers)[labels]
-                samples = np.array(samples)
-                samples = samples.reshape(samples.shape+(1,))
-                sample_queue.put((samples, labels))
-
-    def enqueue_indices(self, terminator, index_queue, indices, batch_size, steps):
-        while not terminator.value == 1:
-            random.shuffle(indices)
-            for i in range(steps):
-                if terminator.value == 1:
-                    break
-                index_queue.put(indices[i*batch_size:(i*batch_size)+batch_size])
 
     def __getitem__(self, index):
         return self.sample_queue.get()

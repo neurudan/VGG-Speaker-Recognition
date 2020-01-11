@@ -12,10 +12,30 @@ from multiprocessing import Process, Queue, Value
 def clear_queue(queue):
     try:
         while True:
-            queue.get(timeout=10)
+            queue.get(timeout=5)
     except:
         pass
 
+def enqueue_samples(index_queue, sample_queue, terminator, h5_path, normalize):
+    with h5py.File(h5_path, 'r') as data:
+        while not terminator.value == 1:
+            try:
+                speaker, audio_name, idx, length = index_queue.get(timeout=4)
+                    
+                sample = data['data/' + speaker][idx][:].reshape((257, length))
+                sample = np.append(sample, sample[:,::-1], axis=1)
+                if normalize:
+                    mu = np.mean(sample, 0, keepdims=True)
+                    std = np.std(sample, 0, keepdims=True)
+                    sample = (sample - mu) / (std + 1e-5)
+                sample = sample.reshape((1, 257, 2 * length, 1))
+                sample_queue.put((speaker+'/'+audio_name, sample))
+            except:
+                pass
+
+def enqueue_indices(index_queue, index_list):
+    for index in index_list:
+        index_queue.put(index)
 
 class TestDataGenerator():
     def __init__(self, qsize, n_proc, normalize=True):
@@ -25,7 +45,7 @@ class TestDataGenerator():
 
         self.terminator = Value('i', 0)
         self.sample_queue = Queue(qsize)
-        self.index_queue = Queue()
+        self.index_queue = Queue(qsize)
         self.enqueuers = []
         self.start(n_proc)
 
@@ -49,31 +69,15 @@ class TestDataGenerator():
                     length = data['statistics/'+speaker][idx]
                     self.index_list.append((speaker, audio_name, idx, length))
         self.fill_index_queue()
-
-    def enqueue(self, terminator):
-        with h5py.File(self.h5_path, 'r') as data:
-            while not terminator.value == 1:
-                try:
-                    speaker, audio_name, idx, length = self.index_queue.get(timeout=0.5)
-                        
-                    sample = data['data/' + speaker][idx][:].reshape((257, length))
-                    sample = np.append(sample, sample[:,::-1], axis=1)
-                    if self.normalize:
-                        mu = np.mean(sample, 0, keepdims=True)
-                        std = np.std(sample, 0, keepdims=True)
-                        sample = (sample - mu) / (std + 1e-5)
-                    sample = sample.reshape((1, 257, 2 * length, 1))
-
-                    self.sample_queue.put((speaker+'/'+audio_name, sample))
-                except:
-                    pass
                     
     def fill_index_queue(self, verbose=False):
-        for index in self.index_list:
-            self.index_queue.put(index)
+        enqueuer = Process(target=enqueue_indices, args=(self.index_queue, self.index_list))
+        enqueuer.start()
 
     def terminate(self):
         self.terminator.value = 1
+        clear_queue(self.index_queue)
+        clear_queue(self.sample_queue)
         one_alive = True
         while one_alive:
             n = np.sum([1 if t.is_alive() else 0 for t in self.enqueuers])
@@ -86,6 +90,7 @@ class TestDataGenerator():
     def start(self, n_proc):
         self.terminator.value = 0
         for _ in range(n_proc):
-            enqueuer = Process(target=self.enqueue, args=(self.terminator,))
+            args = (self.index_queue, self.sample_queue, self.terminator, self.h5_path, self.normalize)
+            enqueuer = Process(target=enqueue_samples, args=args)
             enqueuer.start()
             self.enqueuers.append(enqueuer)
