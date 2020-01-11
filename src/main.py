@@ -123,11 +123,14 @@ def main():
             for layer in network_pre.layers[:-1]:
                 layer.trainable = False
             
+            print('\n\npre_net')
             for layer in network_pre.layers:
                 print(layer.trainable)
             
+            print('\n\nfull_net')
             for layer in network.layers:
                 print(layer.trainable)
+            print('\n\n')
             network_pre.compile(optimizer=keras.optimizers.Adam(lr=1e-3), 
                                 loss='categorical_crossentropy', 
                                 metrics=['acc'])
