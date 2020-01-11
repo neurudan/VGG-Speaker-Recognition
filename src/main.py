@@ -119,7 +119,7 @@ def main():
     for epoch in range(int(args.epochs / 2)):
         pre_acc = 0.0
         pre_loss = 8.0
-        if initial_epoch:
+        if not initial_epoch:
             
             optimizer_backup = network.optimizer
 
