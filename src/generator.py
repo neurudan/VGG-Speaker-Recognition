@@ -90,14 +90,30 @@ class DataGenerator(keras.utils.Sequence):
         self.index_enqueuer_terminator = Value('i', 0)
         self.sample_enqueuer_terminator = Value('i', 0)
 
-        self.index_queue = Queue(qsize)
+        self.index_queue = Queue(300)
         self.sample_queue = Queue(qsize)
 
         self.redraw_speakers()
         self.start(n_proc)
 
+    def set_batch_size(self, batch_size):
+        self.index_enqueuer_terminator.value = 1
+        clear_queue(self.index_queue)
+        clear_queue(self.sample_queue)
 
-    def redraw_speakers(self):
+        self.batch_size = batch_size
+        self.steps_per_epoch = int(np.floor(len(self.indices) / batch_size))
+        args = (self.index_enqueuer_terminator, self.index_queue, self.indices, batch_size, self.steps_per_epoch)
+
+        self.index_enqueuer_terminator.value = 0
+        self.index_enqueuer = Process(target=enqueue_indices, args=args)
+        self.index_enqueuer.start()
+
+
+    def redraw_speakers(self, batch_size = None):
+        if batch_size is not None:
+            self.batch_size = batch_size
+
         self.index_enqueuer_terminator.value = 1
         clear_queue(self.index_queue)
         clear_queue(self.sample_queue)
@@ -108,13 +124,13 @@ class DataGenerator(keras.utils.Sequence):
         indices = []
         for i, speaker in enumerate(speakers):
             (idxs, times) = self.speaker_statistics[speaker]
-            labels, speakers = [i] * len(idxs), [speaker] * len(idxs)
-            indices.extend(list(zip(labels, speakers, idxs, times)))
+            labels, spkrs = [i] * len(idxs), [speaker] * len(idxs)
+            indices.extend(list(zip(labels, spkrs, idxs, times)))
 
         self.steps_per_epoch = int(np.floor(len(indices) / self.batch_size))
 
         args = (self.index_enqueuer_terminator, self.index_queue, indices, self.batch_size, self.steps_per_epoch)
-
+        self.indices = indices
         self.index_enqueuer_terminator.value = 0
         self.index_enqueuer = Process(target=enqueue_indices, args=args)
         self.index_enqueuer.start()

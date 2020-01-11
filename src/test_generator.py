@@ -43,10 +43,13 @@ class TestDataGenerator():
         self.h5_path = '/cluster/home/neurudan/datasets/vox1/vox1_vgg.h5'
         self.normalize = normalize
 
+        self.sample_enqueuers = []
+        
         self.terminator = Value('i', 0)
+
+        self.index_queue = Queue(300)
         self.sample_queue = Queue(qsize)
-        self.index_queue = Queue(qsize)
-        self.enqueuers = []
+        
         self.start(n_proc)
 
     def build_index_list(self, unique_list):
@@ -80,11 +83,11 @@ class TestDataGenerator():
         clear_queue(self.sample_queue)
         one_alive = True
         while one_alive:
-            n = np.sum([1 if t.is_alive() else 0 for t in self.enqueuers])
+            n = np.sum([1 if t.is_alive() else 0 for t in self.sample_enqueuers])
             one_alive = True if n > 0 else False
             time.sleep(0.01)
-        for t in self.enqueuers: t.terminate()
-        self.enqueuers = []
+        for t in self.sample_enqueuers: t.terminate()
+        self.sample_enqueuers = []
         print('==> Testing Enqueuers Terminated')
     
     def start(self, n_proc):
@@ -93,4 +96,4 @@ class TestDataGenerator():
             args = (self.index_queue, self.sample_queue, self.terminator, self.h5_path, self.normalize)
             enqueuer = Process(target=enqueue_samples, args=args)
             enqueuer.start()
-            self.enqueuers.append(enqueuer)
+            self.sample_enqueuers.append(enqueuer)

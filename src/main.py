@@ -31,6 +31,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', default='', type=str)
 parser.add_argument('--resume', default='', type=str)
 parser.add_argument('--batch_size', default=64, type=int)
+parser.add_argument('--batch_size_pretrain', default=64, type=int)
 parser.add_argument('--data_path', default='/scratch/local/ssd/weidi/voxceleb2/dev/wav', type=str)
 parser.add_argument('--multiprocess', default=12, type=int)
 # set up network configuration.
@@ -144,6 +145,8 @@ def main():
             network.compile(optimizer=optimizer_backup, 
                             loss='categorical_crossentropy', 
                             metrics=['acc'])
+            
+            trn_gen.set_batch_size(args.batch_size)
         
 
         print("==> starting training phase")
@@ -154,7 +157,7 @@ def main():
                                   callbacks=callbacks,
                                   verbose=1)
 
-        trn_gen.redraw_speakers()
+        trn_gen.redraw_speakers(args.batch_size_pretrain)
         embeddings = generate_embeddings(eval_cb.model_eval, eval_cb.test_generator)
         eer = calculate_eer(eval_cb.full_list, embeddings)
         wandb.log({'EER': eer,
