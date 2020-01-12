@@ -115,6 +115,7 @@ def main():
     callbacks = [save_best, normal_lr]
 
     initial_epoch = True
+    initial_weights = network.layers[-1].get_weights()
 
     for epoch in range(int(args.epochs / 2)):
         pre_acc = 0.0
@@ -126,6 +127,7 @@ def main():
             # make all layers except the last and first (input layer) one untrainable
             for layer in network.layers[1:-1]:
                 layer.trainable = False
+            network.layers[-1].set_weights(initial_weights)
 
             network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch*2)), 
                             loss='categorical_crossentropy', 
