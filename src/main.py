@@ -119,7 +119,7 @@ def main():
     initial_epoch = True
     initial_weights = network.layers[-1].get_weights()
 
-    optimizer_backup = network.optimizer
+    weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
 
     for epoch in range(int(args.epochs / 2)):
         pre_acc = 0.0
@@ -147,17 +147,21 @@ def main():
                                       steps_per_epoch=trn_gen.steps_per_epoch,
                                       epochs=2,
                                       verbose=1)
+
+            trn_gen.set_batch_size(args.batch_size)
+            
             pre_acc = np.mean(h.history['acc'])
             pre_loss = np.mean(h.history['loss'])
             
             for layer in network.layers[1:-1]:
                 layer.trainable = True
 
-            network.compile(optimizer=optimizer_backup, 
+            network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch*2)), 
                             loss='categorical_crossentropy', 
                             metrics=['acc'])
             
-            trn_gen.set_batch_size(args.batch_size)
+            network._make_train_function()
+            network.optimizer.set_weights(weight_values)
         
 
         print("==> starting training phase")
@@ -179,7 +183,7 @@ def main():
                    'pre_loss': pre_loss})
         initial_epoch = False
 
-        optimizer_backup = network.optimizer
+        weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
         network.save_weights('temp.h5')
 
         K.clear_session()
