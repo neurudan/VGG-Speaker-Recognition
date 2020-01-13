@@ -77,7 +77,7 @@ def amsoftmax_loss(y_true, y_pred, scale=30, margin=0.35):
     return K.categorical_crossentropy(y_true, y_pred, from_logits=True)
 
 
-def vggvox_resnet2d_icassp(input_dim=(257, 250, 1), num_class=8631, mode='train', args=None):
+def vggvox_resnet2d_icassp(input_dim=(257, 250, 1), num_class=8631, mode='train', args=None, optimizer=None):
     net=args.net
     loss=args.loss
     vlad_clusters=args.vlad_cluster
@@ -185,6 +185,8 @@ def vggvox_resnet2d_icassp(input_dim=(257, 250, 1), num_class=8631, mode='train'
         opt = keras.optimizers.Adam(lr=1e-3)
     elif args.optimizer =='sgd':  
         opt = keras.optimizers.SGD(lr=0.1, momentum=0.9, decay=0.0, nesterov=True)
+    if optimizer is not None:
+        opt = optimizer
     else: raise IOError('==> unknown optimizer type')
     model.compile(optimizer=opt, loss=trnloss, metrics=['acc'])
     return model, model_eval

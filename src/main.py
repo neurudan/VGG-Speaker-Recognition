@@ -3,8 +3,10 @@ from __future__ import print_function
 import os
 import sys
 import keras
+from keras import backend as K
 import numpy as np
 import wandb
+import gc
 from wandb.keras import WandbCallback
 
 from generator import DataGenerator
@@ -117,12 +119,19 @@ def main():
     initial_epoch = True
     initial_weights = network.layers[-1].get_weights()
 
+    optimizer_backup = network.optimizer
+
     for epoch in range(int(args.epochs / 2)):
         pre_acc = 0.0
         pre_loss = 8.0
+
         if not initial_epoch:
             
-            optimizer_backup = network.optimizer
+            network, network_eval = model.vggvox_resnet2d_icassp(input_dim=(257, None, 1),
+                                                                 num_class=args.n_speakers,
+                                                                 mode='train', args=args)
+
+            network.load_weights('temp.h5')
 
             # make all layers except the last and first (input layer) one untrainable
             for layer in network.layers[1:-1]:
@@ -160,7 +169,7 @@ def main():
                                   verbose=1)
 
         trn_gen.redraw_speakers(args.batch_size_pretrain)
-        embeddings = generate_embeddings(eval_cb.model_eval, eval_cb.test_generator)
+        embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
         eer = calculate_eer(eval_cb.full_list, embeddings)
         wandb.log({'EER': eer,
                    'acc': np.mean(h.history['acc']),
@@ -169,6 +178,14 @@ def main():
                    'pre_acc': pre_acc,
                    'pre_loss': pre_loss})
         initial_epoch = False
+
+        optimizer_backup = network.optimizer
+        network.save_weights('temp.h5')
+
+        K.clear_session()
+        gc.collect()
+        del network
+        del network_eval
 
 
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
