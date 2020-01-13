@@ -185,8 +185,8 @@ def vggvox_resnet2d_icassp(input_dim=(257, 250, 1), num_class=8631, mode='train'
         opt = keras.optimizers.Adam(lr=1e-3)
     elif args.optimizer =='sgd':  
         opt = keras.optimizers.SGD(lr=0.1, momentum=0.9, decay=0.0, nesterov=True)
+    else: raise IOError('==> unknown optimizer type')
     if optimizer is not None:
         opt = optimizer
-    else: raise IOError('==> unknown optimizer type')
     model.compile(optimizer=opt, loss=trnloss, metrics=['acc'])
     return model, model_eval
