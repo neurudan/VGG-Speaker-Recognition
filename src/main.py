@@ -134,9 +134,15 @@ def main():
             network.load_weights('temp.h5')
 
             # make all layers except the last and first (input layer) one untrainable
-            for layer in network.layers[1:-1]:
+
+            for i, layer in enumerate(network.layers[:-1]):
                 layer.trainable = False
+                print(f' [{i}] X : {layer.name}, {layer}')
+
+            print(f' [{i+1}]   : {network.layers[-1].name}, {network.layers[-1]}')
+
             network.layers[-1].set_weights(initial_weights)
+            
 
             network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch*2)), 
                             loss='categorical_crossentropy', 
@@ -173,8 +179,7 @@ def main():
                                   verbose=1)
 
         trn_gen.redraw_speakers(args.batch_size_pretrain)
-        embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
-        eer = calculate_eer(eval_cb.full_list, embeddings)
+        eer = 0.5
         wandb.log({'EER': eer,
                    'acc': np.mean(h.history['acc']),
                    'loss': np.mean(h.history['loss']),
