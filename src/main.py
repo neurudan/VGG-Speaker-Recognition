@@ -71,24 +71,10 @@ def main():
     
 
     print('\n\nReal Model\n==========================================================================================================')
-    m = [0, len(network.layers[-2].layers) - 1]
-    for i in m:
-        layer = network.layers[-2].layers[i]
-        print(f'[{i}]: {layer.name}, {layer}')
-
-    for layer in network.layers[-2].layers[1:-1]:
-        layer.trainable = False
-    
-    network.compile(optimizer=keras.optimizers.Adam(lr=1e-3), loss='categorical_crossentropy', metrics=['acc'])
-
-    print()
-    print(network.layers[-2].layers[0].trainable)
     one = False
-    for layer in network.layers[-2].layers[1:-1]:
-        if layer.trainable:
-            one = True
-    print(one)
-    print(network.layers[-2].layers[-1].trainable)
+    for i, layer in network.layers[-2].layers):
+        if not layer.trainable:
+            print(f'[{i}]: {layer.name}, {layer}')
 
 
     
