@@ -119,12 +119,12 @@ def save_log(eer, lr, best, initial,
                 b = f[k][1](f[k][0](h[mode][k], best[mode][k]))
                 best[mode][k] = b
                 log[f'{mode} - {k}: best'] = b
-        for i, k in enumerate(['GPU 1: Memory', 'GPU 2: Memory', 'GPU 1: Usage', 'GPU 2: Usage']):
-            log[f'{mode} - {k}'] = g[mode][i]
-        log[f'{mode} - time needed'] = t[mode]
-        b = np.minimum(t[mode], best[mode]['time'])
-        best[mode]['time'] = b
-        log[f'{mode} - time needed best'] = b
+            for i, k in enumerate(['GPU 1: Memory', 'GPU 2: Memory', 'GPU 1: Usage', 'GPU 2: Usage']):
+                log[f'{mode} - {k}'] = g[mode][i]
+            log[f'{mode} - time needed'] = t[mode]
+            b = np.minimum(t[mode], best[mode]['time'])
+            best[mode]['time'] = b
+            log[f'{mode} - time needed best'] = b
     wandb.log(log)
     return best
 
