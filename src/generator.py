@@ -74,6 +74,8 @@ class DataGenerator(keras.utils.Sequence):
                 if line[-1] == '\n':
                     line = line[:-1]
                 self.all_speakers.append(line)
+        
+        self.all_speakers = self.all_speakers[:n_speakers]
 
         # Generate Sample Statistics
         with h5py.File(self.h5_path, 'r') as data:
