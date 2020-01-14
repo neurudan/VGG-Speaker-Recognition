@@ -70,7 +70,6 @@ def main():
                                                          mode='train', args=args)
     
     print('\n\nGPU Model\n==========================================================================================================')
-    
     for i, layer in enumerate(network.layers):
         layer.trainable = False
         print(f'[{i}]: {layer.name}, {layer}')
@@ -80,6 +79,15 @@ def main():
     for i, layer in enumerate(network.layers[-2].layers[-20:]):
         layer.trainable = False
         print(f'[{i}]: {layer.name}, {layer}')
+
+
+    print('\n\Input in Merge Layer\n==========================================================================================================')
+    layer = network.layers[-1]
+    print(layer.input)
+    print(type(layer.input))
+    print()
+    for inp in layer.input:
+        print(inp)
 
     
 
