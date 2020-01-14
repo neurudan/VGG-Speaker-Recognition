@@ -93,6 +93,7 @@ def save_log(eer, lr, best, initial,
              h_t, h_p, 
              g_t, g_p, 
              t_t, t_p, t_h):
+    t_t, t_p, t_h = t_t / 60.0, t_p / 60.0, t_h / 60.0
     b = np.minimum(eer, best['EER'])
     best['EER'] = b
     log = {'EER': eer, 'EER Best': b, 'lr': lr}
