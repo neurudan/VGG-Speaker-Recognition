@@ -77,7 +77,7 @@ def main():
     
 
     print('\n\nReal Model\n==========================================================================================================')
-    for i, layer in enumerate(network.layers[-20:].layers):
+    for i, layer in enumerate(network.layers[-2].layers[-20:]):
         layer.trainable = False
         print(f'[{i}]: {layer.name}, {layer}')
 
