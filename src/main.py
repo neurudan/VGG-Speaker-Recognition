@@ -60,7 +60,7 @@ global args
 args = parser.parse_args()
 
 def main():
-    #wandb.init()
+    wandb.init()
 
     verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
     verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
@@ -173,16 +173,17 @@ def main():
                                   verbose=1)
 
         trn_gen.redraw_speakers(args.batch_size_pretrain)
-        """
-        embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
-        eer = calculate_eer(eval_cb.full_list, embeddings)
+        
+        #embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
+        #eer = calculate_eer(eval_cb.full_list, embeddings)
+        eer = 0.5
         wandb.log({'EER': eer,
                    'acc': np.mean(h.history['acc']),
                    'loss': np.mean(h.history['loss']),
                    'lr': step_decay(epoch * 2),
                    'pre_acc': pre_acc,
                    'pre_loss': pre_loss})
-        """
+        
         initial_epoch = False
 
         weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
