@@ -180,6 +180,7 @@ def main():
         config['run_id'] = wandb.run.id
         config['last_epoch'] = 0
         config['best'] = best
+        last_epoch = 0
 
 
     verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
