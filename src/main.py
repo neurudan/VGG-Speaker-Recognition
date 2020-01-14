@@ -60,160 +60,30 @@ global args
 args = parser.parse_args()
 
 def main():
-    wandb.init()
-
-    verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
-    verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
-    verify_extended = load_verify_list('../meta/voxceleb1_veri_test_extended.txt')
-
     # gpu configuration
-    toolkits.initialize_GPU(args)
-
     import model
-    import generator
 
-    # construct the data generator.
-    params = {'spec_len': 250,
-              'batch_size': args.batch_size,
-              'normalize': True,
-              'qsize': args.qsize,
-              'n_proc': args.n_train_proc,
-              'n_speakers': args.n_speakers
-              }
-
-    # Generators
-    print()
-    print('==> Initialize Data Generators')
-    print()
-    trn_gen = DataGenerator(**params)
-    eval_cb = EvalCallback(args.n_test_proc, args.qsize_test, params['normalize'])
-    print()
-    print()
+    toolkits.initialize_GPU(args)
 
     network, network_eval = model.vggvox_resnet2d_icassp(input_dim=(257, None, 1),
                                                          num_class=args.n_speakers,
                                                          mode='train', args=args)
-
-    eval_cb.model_eval = network_eval
-
-    # ==> load pre-trained model ???list_IDs_temp
-    mgpu = len(keras.backend.tensorflow_backend._get_available_gpus())
-    if args.resume:
-        if os.path.isfile(args.resume):
-            if mgpu == 1: network.load_weights(os.path.join(args.resume))
-            else: network.layers[mgpu + 1].load_weights(os.path.join(args.resume))
-            print('==> successfully loading model {}.'.format(args.resume))
-        else:
-            print("==> no checkpoint found at '{}'".format(args.resume))
-    print(network.summary())
-    print('==> gpu {} is, training using loss: {}, aggregation: {}'.format(args.gpu, args.loss, args.aggregation_mode))
-
-    model_path, _ = set_path(args)
     
-    normal_lr = keras.callbacks.LearningRateScheduler(step_decay)
-    save_best = keras.callbacks.ModelCheckpoint(os.path.join(model_path, 'weights-{epoch:02d}-{acc:.3f}.h5'),
-                                                monitor='loss', mode='min', save_best_only=True)
-
-    callbacks = [save_best, normal_lr]
-
-    initial_epoch = True
-    initial_weights = network.layers[-1].get_weights()
-
-    weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
-
-    for epoch in range(int(args.epochs / 2)):
-        pre_acc = 0.0
-        pre_loss = 8.0
-
-        if not initial_epoch:
-            
-            network, network_eval = model.vggvox_resnet2d_icassp(input_dim=(257, None, 1),
-                                                                 num_class=args.n_speakers,
-                                                                 mode='train', args=args)
-
-            network.load_weights('temp.h5')
-
-            # make all layers except the last and first (input layer) one untrainable
-
-            for i, layer in enumerate(network.layers[:-1]):
-                layer.trainable = False
-                print(f' [{i}] X : {layer.name}, {layer}')
-
-            print(f' [{i+1}]   : {network.layers[-1].name}, {network.layers[-1]}')
-
-            network.layers[-1].set_weights(initial_weights)
-            
-
-            network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch*2)), 
-                            loss='categorical_crossentropy', 
-                            metrics=['acc'])
-
-            print("==> starting pretrain phase")
-            h = network.fit_generator(trn_gen,
-                                      steps_per_epoch=trn_gen.steps_per_epoch,
-                                      epochs=2,
-                                      verbose=1)
-
-            trn_gen.set_batch_size(args.batch_size)
-            
-            pre_acc = np.mean(h.history['acc'])
-            pre_loss = np.mean(h.history['loss'])
-            
-            for layer in network.layers[1:-1]:
-                layer.trainable = True
-
-            network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch*2)), 
-                            loss='categorical_crossentropy', 
-                            metrics=['acc'])
-            
-            network._make_train_function()
-            network.optimizer.set_weights(weight_values)
-        
-
-        print("==> starting training phase")
-        h = network.fit_generator(trn_gen,
-                                  steps_per_epoch=trn_gen.steps_per_epoch,
-                                  epochs=(epoch+1) * 2,
-                                  initial_epoch=epoch * 2,
-                                  callbacks=callbacks,
-                                  verbose=1)
-
-        trn_gen.redraw_speakers(args.batch_size_pretrain)
-        eer = 0.5
-        wandb.log({'EER': eer,
-                   'acc': np.mean(h.history['acc']),
-                   'loss': np.mean(h.history['loss']),
-                   'lr': step_decay(epoch * 2),
-                   'pre_acc': pre_acc,
-                   'pre_loss': pre_loss})
-        initial_epoch = False
-
-        weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
-        network.save_weights('temp.h5')
-
-        K.clear_session()
-        gc.collect()
-        del network
-        del network_eval
-
-
-    unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
-
-    test_generator = eval_cb.test_generator
-    test_generator.build_index_list(unique_list)
+    print('\n\nGPU Model\n==========================================================================================================')
     
-    embeddings = generate_embeddings(network_eval, test_generator)
+    for i, layer in enumerate(network.layers):
+        layer.trainable = False
+        print(f'[{i}]: {layer.name}, {layer}')
     
-    eer_normal = calculate_eer(verify_normal, embeddings)
-    eer_hard = calculate_eer(verify_hard, embeddings)
-    eer_extended = calculate_eer(verify_extended, embeddings)
 
-    wandb.log({'EER_normal': eer_normal,
-               'EER_hard': eer_hard,
-               'EER_extended': eer_extended})
+    print('\n\nReal Model\n==========================================================================================================')
+    for i, layer in enumerate(network.layers[-2].layers):
+        layer.trainable = False
+        print(f'[{i}]: {layer.name}, {layer}')
 
-    test_generator.terminate()
-    trn_gen.terminate()
+    
+
+    
 
 
 
