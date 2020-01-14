@@ -90,7 +90,7 @@ args = parser.parse_args()
 
 
 def save_log(eer, lr, best, h_t, h_p, g_t, g_p, t_t, t_p):
-    b = np.min(eer, best['EER'])
+    b = np.minimum(eer, best['EER'])
     best['EER'] = b
     log = {'EER': eer, 'EER Best': b, 'lr': lr}
     h = {'train': h_t, 'pretrain': h_p}
