@@ -40,6 +40,7 @@ def clear_queue(queue):
     return nd
 
 def gpu_logger(queue):
+    import subprocess
     while True:
         lines = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE, shell=True).stdout.decode('utf-8').split('\n')
         g1, g2 = lines[6], lines[11]
@@ -81,8 +82,6 @@ parser.add_argument('--num_train_ep', default=2, type=int)
 parser.add_argument('--num_pretrain_ep', default=2, type=int)
 parser.add_argument('--batch_size', default=64, type=int)
 parser.add_argument('--batch_size_pretrain', default=64, type=int)
-
-num_train_ep
 
 parser.add_argument('--ohem_level', default=0, type=int,
                     help='pick hard samples from (ohem_level * batch_size) proposals, must be > 1')
@@ -255,8 +254,8 @@ def main():
 
         if initial_epoch:
             wandb.run.summary['graph'] = wandb.Graph.from_keras(network.layers[-2])
-            
-        save_log(eer, epoch, 
+
+        save_log(eer, lr, 
                  trn_h, pre_h, 
                  trn_gpu, pre_gpu, 
                  trn_t, pre_t)
