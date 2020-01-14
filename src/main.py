@@ -43,12 +43,7 @@ def gpu_logger(queue):
     import subprocess
     while True:
         lines = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE, shell=True).stdout.decode('utf-8').split('\n')
-        g1, g2 = lines[6], lines[11]
-        print(g1.split('|'))
-        print(g1.split('|')[2])
-        print(g1.split('|')[2].split('M'))
-        print(g1.split('|')[2].split('M')[0])
-        print(g1.split('|')[2].split('M')[0].strip())
+        g1, g2 = lines[8], lines[11]
         mem_g1 = float(g1.split('|')[2].split('M')[0].strip())
         mem_g2 = float(g2.split('|')[2].split('M')[0].strip())
         usg_g1 = float(g1.split('|')[3].split('%')[0].strip())
@@ -153,7 +148,7 @@ def main():
     gpu_queue = Queue(500)
     gpu_proc = Process(target=gpu_logger, args=(gpu_queue,))
     gpu_proc.start()
-    
+
     # Generators
     print()
     print('==> Initialize Data Generators')
