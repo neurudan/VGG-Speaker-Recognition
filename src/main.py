@@ -98,7 +98,7 @@ def save_log(eer, lr, h_t, h_p, g_t, g_p, t_t, t_p):
         if h[mode] is not None:
             for k in ['acc', 'loss']:
                 for i in range(len(h[mode][k][:-1])):
-                    log[f'{mode} - {k}: {i}. epoch'] = h[mode][k][i]
+                    log[f'{mode} - {k}: {i+1}. epoch'] = h[mode][k][i]
                 log[f'{mode} - {k}: final epoch'] = h[mode][k][-1]
                 log[f'{mode} - {k}: mean'] = np.mean(h[mode][k])
         for i, k in enumerate(['GPU 1: Memory', 'GPU 2: Memory', 'GPU 1: Usage', 'GPU 2: Usage']):
