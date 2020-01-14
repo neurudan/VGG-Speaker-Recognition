@@ -17,7 +17,7 @@ from multiprocessing import Process, Queue
 
 sys.path.append('../tool')
 import toolkits
-import json
+import pickle
 
 
 import atexit
@@ -136,8 +136,8 @@ def main():
             'train': {'acc': 0.0, 'loss': 1000000000.0, 'time': 1000000000.0}}
     config = {}
     if args.resume:
-        with open('previous_run.json', 'r') as fp:
-            data = json.load(fp)
+        with open('previous_run.pkl', 'rb') as fp:
+            data = pickle.load(fp)
             run_id = data['run_id']
             last_epoch = data['last_epoch']
             best = data['best']
@@ -331,8 +331,8 @@ def main():
                         trn_gpu, pre_gpu, 
                         trn_t, pre_t, hyp_t)
         initial_epoch = False
-        with open('previous_run.json', 'w') as fp:
-            json.dump(config, fp)
+        with open('previous_run.pkl', 'wb') as fp:
+            pickle.dump(config, fp)
 
 
 
