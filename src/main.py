@@ -117,7 +117,7 @@ def main():
     callbacks = [save_best, normal_lr]
 
     initial_epoch = True
-    initial_weights = network.layers[-1].get_weights()
+    initial_weights = network.layers[-2].layers[-1].get_weights()
 
     weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
 
@@ -134,9 +134,9 @@ def main():
             network.load_weights('temp.h5')
 
             # make all layers except the last and first (input layer) one untrainable
-            for layer in network.layers[1:-1]:
+            for layer in network.layers[-2].layers[1:-1]:
                 layer.trainable = False
-            network.layers[-1].set_weights(initial_weights)
+            network.layers[-2].layers[-1].set_weights(initial_weights)
 
             network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch*2)), 
                             loss='categorical_crossentropy', 
@@ -153,7 +153,7 @@ def main():
             pre_acc = np.mean(h.history['acc'])
             pre_loss = np.mean(h.history['loss'])
             
-            for layer in network.layers[1:-1]:
+            for layer in network.layers[-2].layers[1:-1]:
                 layer.trainable = True
 
             network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch*2)), 
