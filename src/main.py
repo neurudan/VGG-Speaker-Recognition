@@ -72,7 +72,7 @@ def main():
 
     print('\n\nReal Model\n==========================================================================================================')
     one = False
-    for i, layer in network.layers[-2].layers):
+    for i, layer in enumerate(network.layers[-2].layers):
         if not layer.trainable:
             print(f'[{i}]: {layer.name}, {layer}')
 
