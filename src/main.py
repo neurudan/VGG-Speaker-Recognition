@@ -223,9 +223,6 @@ def main():
     eval_cb.model_eval = network_eval
 
     # ==> load pre-trained model 
-        with open('optimizer_weights.pkl', 'wb') as fp:
-            pickle.dump(weight_values, fp)
-        wandb.save('optimizer_weights.pkl')
     
     initial_epoch = True
     if args.resume:
