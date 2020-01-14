@@ -11,10 +11,10 @@ import wandb
 from multiprocessing import Process, Queue, Value
 
 
-def clear_queue(queue):
+def clear_queue(queue, timeout=5):
     try:
         while True:
-            queue.get(timeout=5)
+            queue.get(timeout=timeout)
     except:
         pass
 
@@ -74,7 +74,6 @@ class DataGenerator(keras.utils.Sequence):
                 if line[-1] == '\n':
                     line = line[:-1]
                 self.all_speakers.append(line)
-        self.all_speakers = self.all_speakers[:600]
 
         # Generate Sample Statistics
         with h5py.File(self.h5_path, 'r') as data:

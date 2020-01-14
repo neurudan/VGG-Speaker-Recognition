@@ -7,11 +7,13 @@ from keras import backend as K
 import numpy as np
 import wandb
 import gc
+import time
 from wandb.keras import WandbCallback
 
 from generator import DataGenerator
 from test_generator import TestDataGenerator
 from eval_callback import *
+from multiprocessing import Process, Queue
 
 sys.path.append('../tool')
 import toolkits
@@ -24,6 +26,30 @@ import atexit
 def terminate_subprocesses():
     os.system('pkill -u "neurudan"')
 
+def clear_queue(queue):
+    dat = []
+    try:
+        while True:
+            dat.append(queue.get(timeout=0.5))
+    except:
+        pass
+    m1, m2, u1, u2 = zip(*dat)
+    d, nd = [m1, m2, u1, u2], []
+    for v in d:
+        nd.append(np.mean(list(v)))
+    return nd
+
+def gpu_logger(queue):
+    while True:
+        lines = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE, shell=True).stdout.decode('utf-8').split('\n')
+        g1, g2 = lines[6], lines[11]
+        mem_g1 = float(g1.split('|')[2].split('M')[0].strip())
+        mem_g2 = float(g2.split('|')[2].split('M')[0].strip())
+        usg_g1 = float(g1.split('|')[3].split('%')[0].strip())
+        usg_g2 = float(g2.split('|')[3].split('%')[0].strip())
+        queue.put((mem_g1, mem_g2, usg_g1, usg_g2))
+        time.sleep(5)
+
 # ===========================================
 #        Parse the argument
 # ===========================================
@@ -32,8 +58,6 @@ parser = argparse.ArgumentParser()
 # set up training configuration.
 parser.add_argument('--gpu', default='', type=str)
 parser.add_argument('--resume', default='', type=str)
-parser.add_argument('--batch_size', default=64, type=int)
-parser.add_argument('--batch_size_pretrain', default=64, type=int)
 parser.add_argument('--data_path', default='/scratch/local/ssd/weidi/voxceleb2/dev/wav', type=str)
 parser.add_argument('--multiprocess', default=12, type=int)
 # set up network configuration.
@@ -53,14 +77,54 @@ parser.add_argument('--qsize_test', default=10000, type=int)
 parser.add_argument('--n_train_proc', default=100, type=int)
 parser.add_argument('--n_test_proc', default=32, type=int)
 parser.add_argument('--n_speakers', default=1000, type=int)
+parser.add_argument('--num_train_ep', default=2, type=int)
+parser.add_argument('--num_pretrain_ep', default=2, type=int)
+parser.add_argument('--batch_size', default=64, type=int)
+parser.add_argument('--batch_size_pretrain', default=64, type=int)
+
+num_train_ep
 
 parser.add_argument('--ohem_level', default=0, type=int,
                     help='pick hard samples from (ohem_level * batch_size) proposals, must be > 1')
 global args
 args = parser.parse_args()
 
+
+def save_log(eer, lr, h_t, h_p, g_t, g_p, t_t, t_p):
+    log = {'EER': eer, 'lr': lr}
+    h = {'train': h_t, 'pretrain': h_p}
+    g = {'train': g_t, 'pretrain': g_p}
+    t = {'train': t_t, 'pretrain': t_p}
+    for mode in ['train', 'pretrain']:
+        if h[mode] is not None:
+            for k in ['acc', 'loss']:
+                for i in range(len(h[mode][k][:-1])):
+                    log[f'{mode} - {k}: {i}. epoch'] = h[mode][k][i]
+                log[f'{mode} - {k}: final epoch'] = h[mode][k][-1]
+                log[f'{mode} - {k}: mean'] = np.mean(h[mode][k])
+        for i, k in enumerate(['GPU 1: Memory', 'GPU 2: Memory', 'GPU 1: Usage', 'GPU 2: Usage']):
+            log[f'{mode} - {k}'] = g[mode][i]
+        log[f'{mode} - time needed'] = t[mode]
+    wandb.log(log)
+
 def main():
-    wandb.init()
+    config = {'epochs': args.epochs,
+              'lr': args.lr,
+              'warmup_ratio': args.warmup_ratio,
+              'loss': args.loss,
+              'optimizer': args.optimizer,
+              'qsize_train': args.qsize,
+              'qsize_test': args.qsize_test,
+              'n_train_proc': args.n_train_proc,
+              'n_test_proc': args.n_test_proc,
+              'n_speakers': args.n_speakers,
+              'num_train_ep': args.num_train_ep,
+              'num_pretrain_ep': args.num_pretrain_ep,
+              'batch_size_train': args.batch_size,
+              'batch_size_pretrain': args.batch_size_pretrain,
+              'bottleneck_dim': args.bottleneck_dim}
+
+    wandb.init(config=config)
 
     verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
     verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
@@ -121,9 +185,15 @@ def main():
 
     weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
 
+    gpu_queue = Queue(500)
+    gpu_proc = Process(target=gpu_logger, args=(gpu_queue,))
+    gpu_proc.start()
+
     for epoch in range(int(args.epochs / 2)):
-        pre_acc = 0.0
-        pre_loss = 8.0
+        pre_t = 0
+        pre_h = None
+
+        pre_gpu = [0,0,0,0]
 
         if not initial_epoch:
             
@@ -142,48 +212,56 @@ def main():
                             loss='categorical_crossentropy', 
                             metrics=['acc'])
 
+
             print("==> starting pretrain phase")
-            h = network.fit_generator(trn_gen,
-                                      steps_per_epoch=trn_gen.steps_per_epoch,
-                                      epochs=2,
-                                      verbose=1)
+            _ = clear_queue(gpu_queue)
+            s = time.time()
+            pre_h = network.fit_generator(trn_gen,
+                                          steps_per_epoch=trn_gen.steps_per_epoch,
+                                          epochs=args.num_pretrain_ep,
+                                          verbose=1).history
+            pre_t = time.time() - s
+            pre_gpu = clear_queue(gpu_queue)
+
 
             trn_gen.set_batch_size(args.batch_size)
-            
-            pre_acc = np.mean(h.history['acc'])
-            pre_loss = np.mean(h.history['loss'])
-            
             for layer in network.layers[-2].layers[1:-1]:
                 layer.trainable = True
-
-            network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch*2)), 
+            network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch * args.num_train_ep)), 
                             loss='categorical_crossentropy', 
                             metrics=['acc'])
-            
             network._make_train_function()
             network.optimizer.set_weights(weight_values)
         
 
         print("==> starting training phase")
-        h = network.fit_generator(trn_gen,
-                                  steps_per_epoch=trn_gen.steps_per_epoch,
-                                  epochs=(epoch+1) * 2,
-                                  initial_epoch=epoch * 2,
-                                  callbacks=callbacks,
-                                  verbose=1)
+        _ = clear_queue(gpu_queue)
+        s = time.time()
+        trn_h = network.fit_generator(trn_gen,
+                                      steps_per_epoch=trn_gen.steps_per_epoch,
+                                      epochs=(epoch+1) * args.num_train_ep,
+                                      initial_epoch=epoch * args.num_train_ep,
+                                      callbacks=callbacks,
+                                      verbose=1).history
+        trn_t = time.time() - s
+        trn_gpu = clear_queue(gpu_queue)
+        
+        lr = step_decay(epoch * args.num_train_ep)
 
         trn_gen.redraw_speakers(args.batch_size_pretrain)
         
-        #embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
-        #eer = calculate_eer(eval_cb.full_list, embeddings)
-        eer = 0.5
-        wandb.log({'EER': eer,
-                   'acc': np.mean(h.history['acc']),
-                   'loss': np.mean(h.history['loss']),
-                   'lr': step_decay(epoch * 2),
-                   'pre_acc': pre_acc,
-                   'pre_loss': pre_loss})
-        
+        embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
+        eer = calculate_eer(eval_cb.full_list, embeddings)
+
+        if initial_epoch:
+            wandb.run.summary['graph'] = wandb.Graph.from_keras(network.layers[-2])
+            
+        save_log(eer, epoch, 
+                 trn_h, pre_h, 
+                 trn_gpu, pre_gpu, 
+                 trn_t, pre_t)
+
+
         initial_epoch = False
 
         weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
