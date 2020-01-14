@@ -80,8 +80,15 @@ def main():
         layer.trainable = False
         print(f'[{i}]: {layer.name}, {layer}')
 
-
-    print('\n\Input in Merge Layer\n==========================================================================================================')
+    print('\n\nOutput from VGG\n==========================================================================================================')
+    layer = network.layers[-2]
+    print(layer.output)
+    print(type(layer.output))
+    print()
+    for out in layer.output:
+        print(out)
+    
+    print('\n\nInput in Merge Layer\n==========================================================================================================')
     layer = network.layers[-1]
     print(layer.input)
     print(type(layer.input))
