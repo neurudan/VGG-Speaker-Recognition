@@ -59,7 +59,7 @@ import argparse
 parser = argparse.ArgumentParser()
 # set up training configuration.
 parser.add_argument('--gpu', default='', type=str)
-parser.add_argument('--resume', default='', type=str)
+parser.add_argument('--resume', action='store_true')
 parser.add_argument('--data_path', default='/scratch/local/ssd/weidi/voxceleb2/dev/wav', type=str)
 parser.add_argument('--multiprocess', default=12, type=int)
 # set up network configuration.
@@ -333,6 +333,7 @@ def main():
         initial_epoch = False
         with open('previous_run.pkl', 'wb') as fp:
             pickle.dump(config, fp)
+        wandb.save('previous_run.pkl')
 
 
 
