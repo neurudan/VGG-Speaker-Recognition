@@ -223,6 +223,10 @@ def main():
     eval_cb.model_eval = network_eval
 
     # ==> load pre-trained model 
+        with open('optimizer_weights.pkl', 'wb') as fp:
+            pickle.dump(weight_values, fp)
+        wandb.save('optimizer_weights.pkl')
+    
     initial_epoch = True
     if args.resume:
         weights_file = wandb.restore('weights.h5')
@@ -242,8 +246,6 @@ def main():
     callbacks = [save_best, normal_lr]
 
     initial_weights = network.layers[-2].layers[-1].get_weights()
-
-    weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
 
     for epoch in range(last_epoch, args.epochs):
         start_time = time.time()
@@ -265,10 +267,9 @@ def main():
                 layer.trainable = False
             network.layers[-2].layers[-1].set_weights(initial_weights)
 
-            network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch*2)), 
+            network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch * args.num_train_ep)), 
                             loss='categorical_crossentropy', 
                             metrics=['acc'])
-
 
             print("==> starting pretrain phase")
             _ = clear_queue(gpu_queue)
@@ -287,8 +288,6 @@ def main():
             network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch * args.num_train_ep)), 
                             loss='categorical_crossentropy', 
                             metrics=['acc'])
-            network._make_train_function()
-            network.optimizer.set_weights(weight_values)
         
 
         print("==> starting training phase")
@@ -312,8 +311,7 @@ def main():
 
         if initial_epoch:
             wandb.run.summary['graph'] = wandb.Graph.from_keras(network.layers[-2])
-
-        weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
+        
         network.save_weights('weights.h5')
 
         K.clear_session()
