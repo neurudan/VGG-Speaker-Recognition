@@ -89,10 +89,18 @@ global args
 args = parser.parse_args()
 
 
-def save_log(eer, lr, best, h_t, h_p, g_t, g_p, t_t, t_p):
+def save_log(eer, lr, best, initial, 
+             h_t, h_p, 
+             g_t, g_p, 
+             t_t, t_p, t_h):
     b = np.minimum(eer, best['EER'])
     best['EER'] = b
     log = {'EER': eer, 'EER Best': b, 'lr': lr}
+    if not initial:
+        b = np.minimum(t_h, best['time'])
+        best['time'] = b
+        log['Hyperepoch - time needed'] = t_h
+        log['Hyperepoch - time needed best'] = b
     h = {'train': h_t, 'pretrain': h_p}
     g = {'train': g_t, 'pretrain': g_p}
     t = {'train': t_t, 'pretrain': t_p}
@@ -111,6 +119,9 @@ def save_log(eer, lr, best, h_t, h_p, g_t, g_p, t_t, t_p):
         for i, k in enumerate(['GPU 1: Memory', 'GPU 2: Memory', 'GPU 1: Usage', 'GPU 2: Usage']):
             log[f'{mode} - {k}'] = g[mode][i]
         log[f'{mode} - time needed'] = t[mode]
+        b = np.minimum(t[mode], best[mode]['time'])
+        best[mode]['time'] = b
+        log[f'{mode} - time needed best'] = b
     wandb.log(log)
     return best
 
@@ -195,12 +206,14 @@ def main():
     initial_epoch = True
     initial_weights = network.layers[-2].layers[-1].get_weights()
     best = {'EER': 1.0,
-            'pretrain': {'acc': 0.0, 'loss': 1000000000.0},
-            'train': {'acc': 0.0, 'loss': 1000000000.0}}
+            'time': 1000000000.0,
+            'pretrain': {'acc': 0.0, 'loss': 1000000000.0, 'time': 1000000000.0},
+            'train': {'acc': 0.0, 'loss': 1000000000.0, 'time': 1000000000.0}}
 
     weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
 
     for epoch in range(int(args.epochs / 2)):
+        start_time = time.time()
         pre_t = 0
         pre_h = None
 
@@ -267,14 +280,6 @@ def main():
         if initial_epoch:
             wandb.run.summary['graph'] = wandb.Graph.from_keras(network.layers[-2])
 
-        best = save_log(eer, lr, best,
-                        trn_h, pre_h, 
-                        trn_gpu, pre_gpu, 
-                        trn_t, pre_t)
-
-
-        initial_epoch = False
-
         weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
         network.save_weights('temp.h5')
 
@@ -282,6 +287,13 @@ def main():
         gc.collect()
         del network
         del network_eval
+
+        hyp_t = time.time() - start_time
+        best = save_log(eer, lr, best, initial_epoch,
+                        trn_h, pre_h, 
+                        trn_gpu, pre_gpu, 
+                        trn_t, pre_t, hyp_t)
+        initial_epoch = False
 
 
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
