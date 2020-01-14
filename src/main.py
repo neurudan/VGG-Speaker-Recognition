@@ -17,6 +17,7 @@ from multiprocessing import Process, Queue
 
 sys.path.append('../tool')
 import toolkits
+import json
 
 
 import atexit
@@ -93,6 +94,7 @@ def save_log(eer, lr, best, initial,
              h_t, h_p, 
              g_t, g_p, 
              t_t, t_p, t_h):
+
     t_t, t_p, t_h = t_t / 60.0, t_p / 60.0, t_h / 60.0
     b = np.minimum(eer, best['EER'])
     best['EER'] = b
@@ -126,24 +128,59 @@ def save_log(eer, lr, best, initial,
     wandb.log(log)
     return best
 
-def main():
-    config = {'epochs': args.epochs,
-              'lr': args.lr,
-              'warmup_ratio': args.warmup_ratio,
-              'loss': args.loss,
-              'optimizer': args.optimizer,
-              'qsize_train': args.qsize,
-              'qsize_test': args.qsize_test,
-              'n_train_proc': args.n_train_proc,
-              'n_test_proc': args.n_test_proc,
-              'n_speakers': args.n_speakers,
-              'num_train_ep': args.num_train_ep,
-              'num_pretrain_ep': args.num_pretrain_ep,
-              'batch_size_train': args.batch_size,
-              'batch_size_pretrain': args.batch_size_pretrain,
-              'bottleneck_dim': args.bottleneck_dim}
 
-    wandb.init(config=config)
+def main():
+    best = {'EER': 1.0,
+            'time': 1000000000.0,
+            'pretrain': {'acc': 0.0, 'loss': 1000000000.0, 'time': 1000000000.0},
+            'train': {'acc': 0.0, 'loss': 1000000000.0, 'time': 1000000000.0}}
+    config = {}
+    if args.resume:
+        with open('previous_run.json', 'r') as fp:
+            data = json.load(fp)
+            run_id = data['run_id']
+            last_epoch = data['last_epoch']
+            best = data['best']
+
+            args.epochs = data['epochs']
+            args.lr = data['lr']
+            args.warmup_ratio = data['warmup_ratio']
+            args.loss = data['loss']
+            args.optimizer = data['optimizer']
+            args.qsize = data['qsize_train']
+            args.qsize_test = data['qsize_test']
+            args.n_train_proc = data['n_train_proc']
+            args.n_test_proc = data['n_test_proc']
+            args.n_speakers = data['n_speakers']
+            args.num_train_ep = data['num_train_ep']
+            args.num_pretrain_ep = data['num_pretrain_ep']
+            args.batch_size = data['batch_size_train']
+            args.batch_size_pretrain = data['batch_size_pretrain']
+            args.bottleneck_dim = data['bottleneck_dim']
+
+            wandb.init(resume=True, id=run_id)
+            config = data
+    else:
+        config = {'epochs': args.epochs,
+                  'lr': args.lr,
+                  'warmup_ratio': args.warmup_ratio,
+                  'loss': args.loss,
+                  'optimizer': args.optimizer,
+                  'qsize_train': args.qsize,
+                  'qsize_test': args.qsize_test,
+                  'n_train_proc': args.n_train_proc,
+                  'n_test_proc': args.n_test_proc,
+                  'n_speakers': args.n_speakers,
+                  'num_train_ep': args.num_train_ep,
+                  'num_pretrain_ep': args.num_pretrain_ep,
+                  'batch_size_train': args.batch_size,
+                  'batch_size_pretrain': args.batch_size_pretrain,
+                  'bottleneck_dim': args.bottleneck_dim}
+        wandb.init(config=config)
+        config['run_id'] = wandb.run.id
+        config['last_epoch'] = 0
+        config['best'] = best
+
 
     verify_normal = load_verify_list('../meta/voxceleb1_veri_test.txt')
     verify_hard = load_verify_list('../meta/voxceleb1_veri_test_hard.txt')
@@ -184,15 +221,14 @@ def main():
 
     eval_cb.model_eval = network_eval
 
-    # ==> load pre-trained model ???list_IDs_temp
-    mgpu = len(keras.backend.tensorflow_backend._get_available_gpus())
+    # ==> load pre-trained model 
+    initial_epoch = True
     if args.resume:
-        if os.path.isfile(args.resume):
-            if mgpu == 1: network.load_weights(os.path.join(args.resume))
-            else: network.layers[mgpu + 1].load_weights(os.path.join(args.resume))
-            print('==> successfully loading model {}.'.format(args.resume))
-        else:
-            print("==> no checkpoint found at '{}'".format(args.resume))
+        weights_file = wandb.restore('weights.h5')
+        network.load_weights(weights_file.name)
+        network.save_weights('weights.h5')
+        initial_epoch = False
+
     print(network.summary())
     print('==> gpu {} is, training using loss: {}, aggregation: {}'.format(args.gpu, args.loss, args.aggregation_mode))
 
@@ -204,16 +240,11 @@ def main():
 
     callbacks = [save_best, normal_lr]
 
-    initial_epoch = True
     initial_weights = network.layers[-2].layers[-1].get_weights()
-    best = {'EER': 1.0,
-            'time': 1000000000.0,
-            'pretrain': {'acc': 0.0, 'loss': 1000000000.0, 'time': 1000000000.0},
-            'train': {'acc': 0.0, 'loss': 1000000000.0, 'time': 1000000000.0}}
 
     weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
 
-    for epoch in range(int(args.epochs / 2)):
+    for epoch in range(last_epoch, args.epochs):
         start_time = time.time()
         pre_t = 0
         pre_h = None
@@ -226,7 +257,7 @@ def main():
                                                                  num_class=args.n_speakers,
                                                                  mode='train', args=args)
 
-            network.load_weights('temp.h5')
+            network.load_weights('weights.h5')
 
             # make all layers except the last and first (input layer) one untrainable
             for layer in network.layers[-2].layers[1:-1]:
@@ -282,7 +313,7 @@ def main():
             wandb.run.summary['graph'] = wandb.Graph.from_keras(network.layers[-2])
 
         weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
-        network.save_weights('temp.h5')
+        network.save_weights('weights.h5')
 
         K.clear_session()
         gc.collect()
@@ -290,11 +321,18 @@ def main():
         del network_eval
 
         hyp_t = time.time() - start_time
+
+        config['last_epoch'] = epoch
+        config['best'] = best
+        wandb.save('weights.h5')
         best = save_log(eer, lr, best, initial_epoch,
                         trn_h, pre_h, 
                         trn_gpu, pre_gpu, 
                         trn_t, pre_t, hyp_t)
         initial_epoch = False
+        with open('previous_run.json', 'w') as fp:
+            json.dump(config, fp)
+
 
 
     unique_list = create_unique_list([verify_normal, verify_hard, verify_extended])
