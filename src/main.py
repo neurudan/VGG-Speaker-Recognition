@@ -194,7 +194,6 @@ def main():
 
     initial_epoch = True
     initial_weights = network.layers[-2].layers[-1].get_weights()
-    min_eer = 1
     best = {'EER': 1.0,
             'pretrain': {'acc': 0.0, 'loss': 1000000000.0},
             'train': {'acc': 0.0, 'loss': 1000000000.0}}
