@@ -89,22 +89,30 @@ global args
 args = parser.parse_args()
 
 
-def save_log(eer, lr, h_t, h_p, g_t, g_p, t_t, t_p):
-    log = {'EER': eer, 'lr': lr}
+def save_log(eer, lr, best, h_t, h_p, g_t, g_p, t_t, t_p):
+    b = np.min(eer, best['EER'])
+    best['EER'] = b
+    log = {'EER': eer, 'EER Best': b, 'lr': lr}
     h = {'train': h_t, 'pretrain': h_p}
     g = {'train': g_t, 'pretrain': g_p}
     t = {'train': t_t, 'pretrain': t_p}
+    f = {'acc': [np.maximum, np.max], 'loss': [np.minimum, np.min]}
     for mode in ['train', 'pretrain']:
         if h[mode] is not None:
             for k in ['acc', 'loss']:
                 for i in range(len(h[mode][k][:-1])):
                     log[f'{mode} - {k}: {i+1}. epoch'] = h[mode][k][i]
+                
                 log[f'{mode} - {k}: final epoch'] = h[mode][k][-1]
                 log[f'{mode} - {k}: mean'] = np.mean(h[mode][k])
+                b = f[k][1](f[k][0](h[mode][k], best[mode][k]))
+                best[mode][k] = b
+                log[f'{mode} - {k}: best'] = b
         for i, k in enumerate(['GPU 1: Memory', 'GPU 2: Memory', 'GPU 1: Usage', 'GPU 2: Usage']):
             log[f'{mode} - {k}'] = g[mode][i]
         log[f'{mode} - time needed'] = t[mode]
     wandb.log(log)
+    return best
 
 def main():
     config = {'epochs': args.epochs,
@@ -186,6 +194,10 @@ def main():
 
     initial_epoch = True
     initial_weights = network.layers[-2].layers[-1].get_weights()
+    min_eer = 1
+    best = {'EER': 1.0,
+            'pretrain': {'acc': 0.0, 'loss': 1000000000.0},
+            'train': {'acc': 0.0, 'loss': 1000000000.0}}
 
     weight_values = K.batch_get_value(getattr(network.optimizer, 'weights'))
 
@@ -256,10 +268,10 @@ def main():
         if initial_epoch:
             wandb.run.summary['graph'] = wandb.Graph.from_keras(network.layers[-2])
 
-        save_log(eer, lr, 
-                 trn_h, pre_h, 
-                 trn_gpu, pre_gpu, 
-                 trn_t, pre_t)
+        best = save_log(eer, lr, best,
+                        trn_h, pre_h, 
+                        trn_gpu, pre_gpu, 
+                        trn_t, pre_t)
 
 
         initial_epoch = False
