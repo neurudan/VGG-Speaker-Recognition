@@ -69,32 +69,27 @@ def main():
                                                          num_class=args.n_speakers,
                                                          mode='train', args=args)
     
-    print('\n\nGPU Model\n==========================================================================================================')
-    for i, layer in enumerate(network.layers):
-        layer.trainable = False
-        print(f'[{i}]: {layer.name}, {layer}')
-    
 
     print('\n\nReal Model\n==========================================================================================================')
-    for i, layer in enumerate(network.layers[-2].layers[-20:]):
-        layer.trainable = False
+    m = [0, len(network.layers[-2].layers) - 1]
+    for i in m:
+        layer = network.layers[-2].layers[i]
         print(f'[{i}]: {layer.name}, {layer}')
 
-    print('\n\nOutput from VGG\n==========================================================================================================')
-    layer = network.layers[-2]
-    print(layer.output)
-    print(type(layer.output))
-    print()
-    for out in layer.output:
-        print(out)
+    for layer in network.layers[-2].layers[1:-1]:
+        layer.trainable = False
     
-    print('\n\nInput in Merge Layer\n==========================================================================================================')
-    layer = network.layers[-1]
-    print(layer.input)
-    print(type(layer.input))
+    network.compile(optimizer=keras.optimizers.Adam(lr=1e-3), loss='categorical_crossentropy', metrics=['acc'])
+
     print()
-    for inp in layer.input:
-        print(inp)
+    print(network.layers[-2].layers[0].trainable)
+    one = False
+    for layer in network.layers[-2].layers[1:-1]:
+        if layer.trainable:
+            one = True
+    print(one)
+    print(network.layers[-2].layers[-1].trainable)
+
 
     
 
