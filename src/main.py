@@ -43,6 +43,8 @@ def gpu_logger(queue):
     import subprocess
     while True:
         lines = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE, shell=True).stdout.decode('utf-8').split('\n')
+        for l in lines:
+            print(l)
         g1, g2 = lines[6], lines[11]
         mem_g1 = float(g1.split('|')[2].split('M')[0].strip())
         mem_g2 = float(g2.split('|')[2].split('M')[0].strip())
