@@ -320,7 +320,7 @@ def main():
         _ = clear_queue(gpu_queue)
         s = time.time()
         trn_h = network.fit_generator(trn_gen,
-                                      steps_per_epoch=2,
+                                      steps_per_epoch=500,
                                       epochs=1,
                                       initial_epoch=epoch,
                                       callbacks=callbacks,
