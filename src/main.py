@@ -268,11 +268,13 @@ def main():
 
     initial_weights = network.layers[-2].layers[-1].get_weights()
 
+
+
     for epoch in range(last_epoch, args.epochs):
         start_time = time.time()
         pre_t = 0
         pre_h = None
-        lr = step_decay(epoch)
+        lr, multiplier = step_decay(epoch)
 
         pre_gpu = [0,0,0,0]
 
@@ -298,7 +300,7 @@ def main():
             s = time.time()
             pre_h = network.fit_generator(trn_gen,
                                           steps_per_epoch=trn_gen.steps_per_epoch,
-                                          epochs=args.num_pretrain_ep,
+                                          epochs=args.num_pretrain_ep * multiplier,
                                           verbose=1).history
             pre_t = time.time() - s
             pre_gpu = clear_queue(gpu_queue)
@@ -317,14 +319,12 @@ def main():
         s = time.time()
         trn_h = network.fit_generator(trn_gen,
                                       steps_per_epoch=trn_gen.steps_per_epoch,
-                                      epochs=epoch + args.num_train_ep,
+                                      epochs=epoch + (args.num_train_ep * multiplier),
                                       initial_epoch=epoch,
                                       callbacks=callbacks,
                                       verbose=1).history
         trn_t = time.time() - s
         trn_gpu = clear_queue(gpu_queue)
-        
-        lr = step_decay(epoch + )
 
         trn_gen.redraw_speakers(args.batch_size_pretrain)
         
@@ -402,17 +402,20 @@ def step_decay(epoch):
     stage1, stage2, stage3 = int(epochs * 0.5), int(epochs * 0.8), epochs
 
     milestone = [stage1, stage2, stage3]
+    multipliers = [1, 4, 10] 
     gamma = [1.0, 0.1, 0.01]
 
     lr = 0.005
     init_lr = args.lr
     stage = len(milestone)
+    multiplier = multipliers[0]
     for s in range(stage):
         if epoch < milestone[s]:
             lr = init_lr * gamma[s]
+            multiplier = multipliers[s]
             break
     #print('==> Learning rate for epoch {} is {}.'.format(epoch + 1, lr))
-    return np.float(lr)
+    return np.float(lr), multiplier
 
 
 def set_path(args):
