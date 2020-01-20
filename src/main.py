@@ -297,16 +297,27 @@ def main():
             _ = clear_queue(gpu_queue)
             s = time.time()
             pre_h = network.fit_generator(trn_gen,
-                                          steps_per_epoch=trn_gen.steps_per_epoch,
+                                          steps_per_epoch=50,
                                           epochs=args.num_pretrain_ep * multiplier,
                                           verbose=1).history
+                                          #trn_gen.steps_per_epoch
             pre_t = time.time() - s
             pre_gpu = clear_queue(gpu_queue)
-
-
             trn_gen.set_batch_size(args.batch_size)
-            for layer in network.layers[-2].layers[1:-1]:
-                layer.trainable = True
+            
+            
+            network.save_weights('weights.h5')
+            K.clear_session()
+            gc.collect()
+            del network
+            del network_eval
+
+            network, network_eval = model.vggvox_resnet2d_icassp(input_dim=(257, None, 1),
+                                                                 num_class=args.n_speakers,
+                                                                 mode='train', args=args)
+
+            network.load_weights('weights.h5')
+
         network.compile(optimizer=keras.optimizers.Adam(lr=lr), 
                         loss='categorical_crossentropy', 
                         metrics=['acc'])
@@ -316,25 +327,26 @@ def main():
         _ = clear_queue(gpu_queue)
         s = time.time()
         trn_h = network.fit_generator(trn_gen,
-                                      steps_per_epoch=trn_gen.steps_per_epoch,
+                                      steps_per_epoch=50,
                                       epochs=epoch + (args.num_train_ep * multiplier),
                                       initial_epoch=epoch,
                                       callbacks=callbacks,
                                       verbose=1).history
         trn_t = time.time() - s
         trn_gpu = clear_queue(gpu_queue)
-
+        #trn_gen.steps_per_epoch
 
         trn_gen.redraw_speakers(args.batch_size_pretrain)
         
 
-        _ = clear_queue(gpu_queue)
+        #_ = clear_queue(gpu_queue)
         s = time.time()
-        embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
+        #embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
         emb_t = time.time() - s
-        emb_gpu = clear_queue(gpu_queue)
-        eer = calculate_eer(eval_cb.full_list, embeddings)
-
+        #emb_gpu = clear_queue(gpu_queue)
+        #eer = calculate_eer(eval_cb.full_list, embeddings)
+        eer = 0.4
+        emb_gpu = trn_gpu
 
         if initial_epoch:
             wandb.run.summary['graph'] = wandb.Graph.from_keras(network.layers[-2])
