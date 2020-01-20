@@ -335,14 +335,15 @@ def main():
 
         trn_gen.redraw_speakers(args.batch_size_pretrain)
         
+
+        emb_t = trn_t
+        emb_gpu = trn_gpu
+        """
         _ = clear_queue(gpu_queue)
         s = time.time()
-        """
         embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
-        """
         emb_t = time.time() - s
         emb_gpu = clear_queue(gpu_queue)
-        """
         eer = calculate_eer(eval_cb.full_list, embeddings)
         """
         eer = 0.5
