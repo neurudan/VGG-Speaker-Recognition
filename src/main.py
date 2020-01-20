@@ -299,8 +299,9 @@ def main():
             s = time.time()
             pre_h = network.fit_generator(trn_gen,
                                           steps_per_epoch=trn_gen.steps_per_epoch,
-                                          epochs=args.num_pretrain_ep * multiplier,
+                                          epochs=50,
                                           verbose=1).history
+                                          #args.num_pretrain_ep * multiplier
             pre_t = time.time() - s
             pre_gpu = clear_queue(gpu_queue)
 
