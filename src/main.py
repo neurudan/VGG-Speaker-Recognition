@@ -360,8 +360,8 @@ def main():
         config['last_epoch'] = epoch
         config['best_eer'] = best_eer
 
-        tops = save_log(tops, initial,
-                        lr, eer
+        tops = save_log(tops, initial_epoch,
+                        lr, eer,
                         trn_h, pre_h, 
                         trn_gpu, pre_gpu, emb_gpu,
                         trn_t, pre_t, emb_t, hyp_t)
