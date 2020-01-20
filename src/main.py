@@ -8,6 +8,7 @@ import numpy as np
 import wandb
 import gc
 import time
+import copy
 from wandb.keras import WandbCallback
 
 from generator import DataGenerator
@@ -35,10 +36,12 @@ def clear_queue(queue):
     except:
         pass
     m1, m2, u1, u2 = zip(*dat)
-    d, nd = [m1, m2, u1, u2], []
-    for v in d:
-        nd.append(np.mean(list(v)))
-    return nd
+    gpu_log = {'GPU 1': {}, 'GPU 2': {}}
+    gpu_log['GPU 1']['Memory'] = np.mean(list(m1))
+    gpu_log['GPU 2']['Memory'] = np.mean(list(m2))
+    gpu_log['GPU 1']['Usage'] = np.mean(list(u1))
+    gpu_log['GPU 2']['Usage'] = np.mean(list(u2))
+    return gpu_log
 
 def gpu_logger(queue):
     import subprocess
@@ -89,58 +92,79 @@ parser.add_argument('--ohem_level', default=0, type=int,
 global args
 args = parser.parse_args()
 
+def save_tops(val, log, tops, keys, log_tops=True):
+    log_name = ' - '.join(keys)
+    log[log_name] = val
+    if log_tops:
+        t = tops
+        for k in keys:
+            if k not in t:
+                t[k] = {}
+            t = t[k]
+        if 'min' not in t:
+            t['min'] = val
+            t['max'] = val    
+        else:
+            t['min'] = np.minimum(val, t['min'])
+            t['max'] = np.maximum(val, t['max'])
+        log[log_name + ' (min)'] = t['min']
+        log[log_name + ' (max)'] = t['max']
+    return log, tops
 
-def save_log(eer, lr, best, initial, 
+def save_log(tops, initial, 
+             lr, eer, 
              h_t, h_p, 
-             g_t, g_p, 
-             t_t, t_p, t_h):
+             g_t, g_p, g_e, 
+             t_t, t_p, t_e, t_h):
 
-    t_t, t_p, t_h = t_t / 60.0, t_p / 60.0, t_h / 60.0
-    b = np.minimum(eer, best['EER'])
-    best['EER'] = b
-    log = {'EER': eer, 'EER Best': b, 'lr': lr}
+    t_s = t_h - t_t - t_p - t_e
+    t_t, t_p, t_e, t_s, t_h = t_t / 60.0, t_p / 60.0, t_e / 60.0, t_s / 60.0, t_h / 60.0
+    
+    log = {}
+    log, tops = save_tops(t_h, log, tops, ['Learn Rate'], log_tops=False)
+    log, tops = save_tops(eer, log, tops, ['EER'])
+    log, tops = save_tops(t_t, log, tops, ['Train', 'Time needed'])
+    for k in [['acc', 'Accuracy'], ['loss', 'Loss']]:
+        for i in range(len(h_t[k][:-1])):
+            log, tops = save_tops(h_t[k[0]][i], log, tops, ['Train', k[1], f'{i+1}. epoch'])
+        log, tops = save_tops(h_t[k[0]][-1], log, tops, ['Train', k[1], 'final epoch'])
+        log, tops = save_tops(np.mean(h_t[k[0]]), log, tops, ['Train', k[1], 'mean'])
+    
+    for k in g_t:
+        for m in g_t[k]:
+            log, tops = save_tops(g_t[k][m], log, tops, ['Train', k, m])
+            log, tops = save_tops(g_e[k][m], log, tops, ['Embeddings', k, m])
+
     if not initial:
-        b = np.minimum(t_h, best['time'])
-        best['time'] = b
-        log['Hyperepoch - time needed'] = t_h
-        log['Hyperepoch - time needed best'] = b
-    h = {'train': h_t, 'pretrain': h_p}
-    g = {'train': g_t, 'pretrain': g_p}
-    t = {'train': t_t, 'pretrain': t_p}
-    f = {'acc': [np.maximum, np.max], 'loss': [np.minimum, np.min]}
-    for mode in ['train', 'pretrain']:
-        if h[mode] is not None:
-            for k in ['acc', 'loss']:
-                for i in range(len(h[mode][k][:-1])):
-                    log[f'{mode} - {k}: {i+1}. epoch'] = h[mode][k][i]
-                
-                log[f'{mode} - {k}: final epoch'] = h[mode][k][-1]
-                log[f'{mode} - {k}: mean'] = np.mean(h[mode][k])
-                b = f[k][1](f[k][0](h[mode][k], best[mode][k]))
-                best[mode][k] = b
-                log[f'{mode} - {k}: best'] = b
-            for i, k in enumerate(['GPU 1: Memory', 'GPU 2: Memory', 'GPU 1: Usage', 'GPU 2: Usage']):
-                log[f'{mode} - {k}'] = g[mode][i]
-            log[f'{mode} - time needed'] = t[mode]
-            b = np.minimum(t[mode], best[mode]['time'])
-            best[mode]['time'] = b
-            log[f'{mode} - time needed best'] = b
+        log, tops = save_tops(t_h, log, tops, ['Hyperepoch', 'Time needed'])
+        log, tops = save_tops(t_s, log, tops, ['Setup', 'Time needed'])
+
+        log, tops = save_tops(t_t, log, tops, ['Pretrain', 'Time needed'])
+        for k in [['acc', 'Accuracy'], ['loss', 'Loss']]:
+            for i in range(len(h_t[k][:-1])):
+                log, tops = save_tops(h_t[k[0]][i], log, tops, ['Pretrain', k[1], f'{i+1}. epoch'])
+            log, tops = save_tops(h_t[k[0]][-1], log, tops, ['Pretrain', k[1], 'final epoch'])
+            log, tops = save_tops(np.mean(h_t[k[0]]), log, tops, ['Pretrain', k[1], 'mean'])
+        for k in g_p:
+            for m in g_p[k]:
+                log, tops = save_tops(g_p[k][m], log, tops, ['Pretrain', k, m])
+    else:
+        log, tops = save_tops(t_h, log, tops, ['Hyperepoch', 'Time needed'], log_tops=False)
     wandb.log(log)
-    return best
+    return tops
 
 
 def main():
-    best = {'EER': 1.0,
-            'time': 1000000000.0,
-            'pretrain': {'acc': 0.0, 'loss': 1000000000.0, 'time': 1000000000.0},
-            'train': {'acc': 0.0, 'loss': 1000000000.0, 'time': 1000000000.0}}
+    tops = {}
+    best_eer = {}
     config = {}
     if args.resume:
         with open('previous_run.pkl', 'rb') as fp:
             data = pickle.load(fp)
             run_id = data['run_id']
             last_epoch = data['last_epoch']
-            best = data['best']
+            tops = data['tops']
+            best_eer = data['best_eer']
 
             args.epochs = data['epochs']
             args.lr = data['lr']
@@ -179,7 +203,8 @@ def main():
         wandb.init(config=config)
         config['run_id'] = wandb.run.id
         config['last_epoch'] = 0
-        config['best'] = best
+        config['tops'] = tops
+        config['best_eer'] = best_eer
         last_epoch = 0
 
 
@@ -236,11 +261,10 @@ def main():
 
     model_path, _ = set_path(args)
     
-    normal_lr = keras.callbacks.LearningRateScheduler(step_decay)
     save_best = keras.callbacks.ModelCheckpoint(os.path.join(model_path, 'weights-{epoch:02d}-{acc:.3f}.h5'),
                                                 monitor='loss', mode='min', save_best_only=True)
 
-    callbacks = [save_best, normal_lr]
+    callbacks = [save_best]
 
     initial_weights = network.layers[-2].layers[-1].get_weights()
 
@@ -248,6 +272,7 @@ def main():
         start_time = time.time()
         pre_t = 0
         pre_h = None
+        lr = step_decay(epoch)
 
         pre_gpu = [0,0,0,0]
 
@@ -264,7 +289,7 @@ def main():
                 layer.trainable = False
             network.layers[-2].layers[-1].set_weights(initial_weights)
 
-            network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch * args.num_train_ep)), 
+            network.compile(optimizer=keras.optimizers.Adam(lr=lr), 
                             loss='categorical_crossentropy', 
                             metrics=['acc'])
 
@@ -282,9 +307,9 @@ def main():
             trn_gen.set_batch_size(args.batch_size)
             for layer in network.layers[-2].layers[1:-1]:
                 layer.trainable = True
-            network.compile(optimizer=keras.optimizers.Adam(lr=step_decay(epoch * args.num_train_ep)), 
-                            loss='categorical_crossentropy', 
-                            metrics=['acc'])
+        network.compile(optimizer=keras.optimizers.Adam(lr=lr), 
+                        loss='categorical_crossentropy', 
+                        metrics=['acc'])
         
 
         print("==> starting training phase")
@@ -292,24 +317,38 @@ def main():
         s = time.time()
         trn_h = network.fit_generator(trn_gen,
                                       steps_per_epoch=trn_gen.steps_per_epoch,
-                                      epochs=(epoch+1) * args.num_train_ep,
-                                      initial_epoch=epoch * args.num_train_ep,
+                                      epochs=epoch + args.num_train_ep,
+                                      initial_epoch=epoch,
                                       callbacks=callbacks,
                                       verbose=1).history
         trn_t = time.time() - s
         trn_gpu = clear_queue(gpu_queue)
         
-        lr = step_decay(epoch * args.num_train_ep)
+        lr = step_decay(epoch + )
 
         trn_gen.redraw_speakers(args.batch_size_pretrain)
         
+        _ = clear_queue(gpu_queue)
+        s = time.time()
         embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
+        emb_t = time.time() - s
+        emb_gpu = clear_queue(gpu_queue)
+
         eer = calculate_eer(eval_cb.full_list, embeddings)
 
         if initial_epoch:
             wandb.run.summary['graph'] = wandb.Graph.from_keras(network.layers[-2])
         
+        if lr not in best_eer:
+            best_eer[lr] = 0.5
+        if best_eer[lr] > eer:
+            best_eer[lr] = eer
+            network.save_weights(f'best_weights_{lr}.h5')
+            wandb.save(f'best_weights_{lr}.h5')
+        
         network.save_weights('weights.h5')
+        wandb.save('weights.h5')
+
 
         K.clear_session()
         gc.collect()
@@ -319,12 +358,14 @@ def main():
         hyp_t = time.time() - start_time
 
         config['last_epoch'] = epoch
-        config['best'] = best
-        wandb.save('weights.h5')
-        best = save_log(eer, lr, best, initial_epoch,
+        config['best_eer'] = best_eer
+
+        tops = save_log(tops, initial,
+                        lr, eer
                         trn_h, pre_h, 
-                        trn_gpu, pre_gpu, 
-                        trn_t, pre_t, hyp_t)
+                        trn_gpu, pre_gpu, emb_gpu,
+                        trn_t, pre_t, emb_t, hyp_t)
+        config['tops'] = tops
         initial_epoch = False
         with open('previous_run.pkl', 'wb') as fp:
             pickle.dump(config, fp)
@@ -360,12 +401,8 @@ def step_decay(epoch):
     epochs = args.epochs
     stage1, stage2, stage3 = int(epochs * 0.5), int(epochs * 0.8), epochs
 
-    if args.warmup_ratio:
-        milestone = [2, stage1, stage2, stage3]
-        gamma = [args.warmup_ratio, 1.0, 0.1, 0.01]
-    else:
-        milestone = [stage1, stage2, stage3]
-        gamma = [1.0, 0.1, 0.01]
+    milestone = [stage1, stage2, stage3]
+    gamma = [1.0, 0.1, 0.01]
 
     lr = 0.005
     init_lr = args.lr
