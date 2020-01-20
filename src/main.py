@@ -117,6 +117,8 @@ def save_log(tops, initial,
              g_t, g_p, g_e, 
              t_t, t_p, t_e, t_h):
 
+    print(type(h_t))
+    print(h_t)
     t_s = t_h - t_t - t_p - t_e
     t_t, t_p, t_e, t_s, t_h = t_t / 60.0, t_p / 60.0, t_e / 60.0, t_s / 60.0, t_h / 60.0
     
@@ -318,11 +320,19 @@ def main():
         _ = clear_queue(gpu_queue)
         s = time.time()
         trn_h = network.fit_generator(trn_gen,
+                                      steps_per_epoch=2,
+                                      epochs=1,
+                                      initial_epoch=epoch,
+                                      callbacks=callbacks,
+                                      verbose=1).history
+        """
+        trn_h = network.fit_generator(trn_gen,
                                       steps_per_epoch=trn_gen.steps_per_epoch,
                                       epochs=epoch + (args.num_train_ep * multiplier),
                                       initial_epoch=epoch,
                                       callbacks=callbacks,
                                       verbose=1).history
+        """
         trn_t = time.time() - s
         trn_gpu = clear_queue(gpu_queue)
 
@@ -330,12 +340,15 @@ def main():
         
         _ = clear_queue(gpu_queue)
         s = time.time()
+        """
         embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
+        """
         emb_t = time.time() - s
         emb_gpu = clear_queue(gpu_queue)
-
+        """
         eer = calculate_eer(eval_cb.full_list, embeddings)
-
+        """
+        eer = 0.5
         if initial_epoch:
             wandb.run.summary['graph'] = wandb.Graph.from_keras(network.layers[-2])
         
