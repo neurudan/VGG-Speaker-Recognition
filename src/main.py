@@ -297,10 +297,10 @@ def main():
             _ = clear_queue(gpu_queue)
             s = time.time()
             pre_h = network.fit_generator(trn_gen,
-                                          steps_per_epoch=50,
+                                          steps_per_epoch=trn_gen.steps_per_epoch,
                                           epochs=args.num_pretrain_ep * multiplier,
                                           verbose=1).history
-                                          #trn_gen.steps_per_epoch
+                                          
             pre_t = time.time() - s
             pre_gpu = clear_queue(gpu_queue)
             trn_gen.set_batch_size(args.batch_size)
@@ -327,26 +327,24 @@ def main():
         _ = clear_queue(gpu_queue)
         s = time.time()
         trn_h = network.fit_generator(trn_gen,
-                                      steps_per_epoch=50,
+                                      steps_per_epoch=trn_gen.steps_per_epoch,
                                       epochs=epoch + (args.num_train_ep * multiplier),
                                       initial_epoch=epoch,
                                       callbacks=callbacks,
                                       verbose=1).history
         trn_t = time.time() - s
         trn_gpu = clear_queue(gpu_queue)
-        #trn_gen.steps_per_epoch
+        trn_gen.steps_per_epoch
 
         trn_gen.redraw_speakers(args.batch_size_pretrain)
         
 
-        #_ = clear_queue(gpu_queue)
+        _ = clear_queue(gpu_queue)
         s = time.time()
-        #embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
+        embeddings = generate_embeddings(network_eval, eval_cb.test_generator)
         emb_t = time.time() - s
-        #emb_gpu = clear_queue(gpu_queue)
-        #eer = calculate_eer(eval_cb.full_list, embeddings)
-        eer = 0.4
-        emb_gpu = trn_gpu
+        emb_gpu = clear_queue(gpu_queue)
+        eer = calculate_eer(eval_cb.full_list, embeddings)
 
         if initial_epoch:
             wandb.run.summary['graph'] = wandb.Graph.from_keras(network.layers[-2])
