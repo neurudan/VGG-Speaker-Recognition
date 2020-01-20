@@ -118,7 +118,7 @@ def save_log(tops, initial,
              t_t, t_p, t_e, t_h):
     t_s = t_h - t_t - t_p - t_e
     t_t, t_p, t_e, t_s, t_h = t_t / 60.0, t_p / 60.0, t_e / 60.0, t_s / 60.0, t_h / 60.0
-    
+    print(h_t)
     log = {}
     log, tops = save_tops(t_h, log, tops, ['Learn Rate'], log_tops=False)
     log, tops = save_tops(eer, log, tops, ['EER'])
