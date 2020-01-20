@@ -319,7 +319,7 @@ def main():
         s = time.time()
         trn_h = network.fit_generator(trn_gen,
                                       steps_per_epoch=50,
-                                      epochs=1,
+                                      epochs=epoch+1,
                                       initial_epoch=epoch,
                                       callbacks=callbacks,
                                       verbose=1).history
