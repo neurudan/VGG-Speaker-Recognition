@@ -35,7 +35,6 @@ def clear_queue(queue):
             dat.append(queue.get(timeout=0.5))
     except:
         pass
-    print(dat)
     m1, m2, u1, u2 = zip(*dat)
     gpu_log = {'GPU 1': {}, 'GPU 2': {}}
     gpu_log['GPU 1']['Memory'] = np.mean(list(m1))
@@ -117,9 +116,6 @@ def save_log(tops, initial,
              h_t, h_p, 
              g_t, g_p, g_e, 
              t_t, t_p, t_e, t_h):
-
-    print(type(h_t))
-    print(h_t)
     t_s = t_h - t_t - t_p - t_e
     t_t, t_p, t_e, t_s, t_h = t_t / 60.0, t_p / 60.0, t_e / 60.0, t_s / 60.0, t_h / 60.0
     
@@ -321,7 +317,7 @@ def main():
         _ = clear_queue(gpu_queue)
         s = time.time()
         trn_h = network.fit_generator(trn_gen,
-                                      steps_per_epoch=50,
+                                      steps_per_epoch=500,
                                       epochs=1,
                                       initial_epoch=epoch,
                                       callbacks=callbacks,
