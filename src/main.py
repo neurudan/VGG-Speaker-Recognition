@@ -128,7 +128,7 @@ def save_log(tops, initial,
     log, tops = save_tops(eer, log, tops, ['EER'])
     log, tops = save_tops(t_t, log, tops, ['Train', 'Time needed'])
     for k in [['acc', 'Accuracy'], ['loss', 'Loss']]:
-        for i in range(len(h_t[k][:-1])):
+        for i in range(len(h_t[k[0]][:-1])):
             log, tops = save_tops(h_t[k[0]][i], log, tops, ['Train', k[1], f'{i+1}. epoch'])
         log, tops = save_tops(h_t[k[0]][-1], log, tops, ['Train', k[1], 'final epoch'])
         log, tops = save_tops(np.mean(h_t[k[0]]), log, tops, ['Train', k[1], 'mean'])
@@ -142,12 +142,12 @@ def save_log(tops, initial,
         log, tops = save_tops(t_h, log, tops, ['Hyperepoch', 'Time needed'])
         log, tops = save_tops(t_s, log, tops, ['Setup', 'Time needed'])
 
-        log, tops = save_tops(t_t, log, tops, ['Pretrain', 'Time needed'])
+        log, tops = save_tops(t_p, log, tops, ['Pretrain', 'Time needed'])
         for k in [['acc', 'Accuracy'], ['loss', 'Loss']]:
-            for i in range(len(h_t[k][:-1])):
-                log, tops = save_tops(h_t[k[0]][i], log, tops, ['Pretrain', k[1], f'{i+1}. epoch'])
-            log, tops = save_tops(h_t[k[0]][-1], log, tops, ['Pretrain', k[1], 'final epoch'])
-            log, tops = save_tops(np.mean(h_t[k[0]]), log, tops, ['Pretrain', k[1], 'mean'])
+            for i in range(len(h_p[k[0]][:-1])):
+                log, tops = save_tops(h_p[k[0]][i], log, tops, ['Pretrain', k[1], f'{i+1}. epoch'])
+            log, tops = save_tops(h_p[k[0]][-1], log, tops, ['Pretrain', k[1], 'final epoch'])
+            log, tops = save_tops(np.mean(h_p[k[0]]), log, tops, ['Pretrain', k[1], 'mean'])
         for k in g_p:
             for m in g_p[k]:
                 log, tops = save_tops(g_p[k][m], log, tops, ['Pretrain', k, m])
