@@ -119,7 +119,7 @@ def save_log(tops, initial,
     t_s = t_h - t_t - t_p - t_e
     t_t, t_p, t_e, t_s, t_h = t_t / 60.0, t_p / 60.0, t_e / 60.0, t_s / 60.0, t_h / 60.0
     log = {}
-    log, tops = save_tops(t_h, log, tops, ['Learn Rate'], log_tops=False)
+    log, tops = save_tops(lr, log, tops, ['Learn Rate'], log_tops=False)
     log, tops = save_tops(eer, log, tops, ['EER'])
     log, tops = save_tops(t_t, log, tops, ['Train', 'Time needed'])
     for k in [['acc', 'Accuracy'], ['loss', 'Loss']]:
@@ -375,6 +375,8 @@ def main():
                         trn_h, pre_h, 
                         trn_gpu, pre_gpu, emb_gpu,
                         trn_t, pre_t, emb_t, hyp_t)
+
+                        
         config['tops'] = tops
         initial_epoch = False
         with open('previous_run.pkl', 'wb') as fp:
