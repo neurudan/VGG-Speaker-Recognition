@@ -146,8 +146,6 @@ def save_log(tops, initial,
         for k in g_p:
             for m in g_p[k]:
                 log, tops = save_tops(g_p[k][m], log, tops, ['Pretrain', k, m])
-    else:
-        log, tops = save_tops(t_h, log, tops, ['Hyperepoch', 'Time needed'], log_tops=False)
     wandb.log(log)
     return tops
 
