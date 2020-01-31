@@ -316,6 +316,9 @@ def main():
 
             network.load_weights('weights.h5')
 
+        if not initial_epoch:
+            network.layers[-2].layers[-1].trainable = False
+
         network.compile(optimizer=keras.optimizers.Adam(lr=lr), 
                         loss='categorical_crossentropy', 
                         metrics=['acc'])
@@ -355,6 +358,7 @@ def main():
             wandb.save(f'best_weights_{lr}.h5')
         
         network.save_weights('weights.h5')
+        network.save_weights('weights_fuckin_backed_up.h5')
         wandb.save('weights.h5')
 
 
