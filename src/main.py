@@ -178,7 +178,23 @@ def main():
             args.batch_size_pretrain = data['batch_size_pretrain']
             args.bottleneck_dim = data['bottleneck_dim']
 
-            wandb.init(resume=True, id=run_id)
+            config = {'epochs': args.epochs,
+                      'lr': args.lr,
+                      'warmup_ratio': args.warmup_ratio,
+                      'loss': args.loss,
+                      'optimizer': args.optimizer,
+                      'qsize_train': args.qsize,
+                      'qsize_test': args.qsize_test,
+                      'n_train_proc': args.n_train_proc,
+                      'n_test_proc': args.n_test_proc,
+                      'n_speakers': args.n_speakers,
+                      'num_train_ep': args.num_train_ep,
+                      'num_pretrain_ep': args.num_pretrain_ep,
+                      'batch_size_train': args.batch_size,
+                      'batch_size_pretrain': args.batch_size_pretrain,
+                      'bottleneck_dim': args.bottleneck_dim}
+
+            wandb.init(resume=True, id=run_id, config=config)
             config = data
     else:
         config = {'epochs': args.epochs,
@@ -196,7 +212,9 @@ def main():
                   'batch_size_train': args.batch_size,
                   'batch_size_pretrain': args.batch_size_pretrain,
                   'bottleneck_dim': args.bottleneck_dim}
+
         wandb.init(config=config)
+        
         config['run_id'] = wandb.run.id
         config['last_epoch'] = 0
         config['tops'] = tops
