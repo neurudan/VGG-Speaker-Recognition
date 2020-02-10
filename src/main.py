@@ -249,7 +249,7 @@ def main():
     if args.resume:
         weights_file = wandb.restore('weights.h5')
         print(weights_file.name)
-        network.load_weights(weights_file.name)
+        network.load_weights('weights_fuckin_backed_up.h5')
         network.save_weights('weights.h5')
         initial_epoch = False
 
